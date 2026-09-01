@@ -1,0 +1,82 @@
+[2026-07-06 09:45:36] Database Connection Error: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+[2026-07-06 09:45:40] Database Connection Error: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+[2026-07-06 09:45:40] webapi/categories: Database connection failed: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+[2026-07-06 09:45:44] Database Connection Error: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+[2026-07-06 09:45:44] webapi/series: Database connection failed: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+[2026-07-06 09:45:48] Database Connection Error: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+[2026-07-06 09:45:48] webapi/sub_categories: Database connection failed: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+[2026-07-06 09:45:52] Database Connection Error: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+[2026-07-06 09:45:52] webapi/products: Database connection failed: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+[2026-07-06 09:45:56] Database Connection Error: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+[2026-07-06 09:45:56] webapi/banners: Database connection failed: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+[2026-07-06 09:45:59] Database Connection Error: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+[2026-07-06 09:45:59] webapi/products: Database connection failed: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+[2026-07-06 09:46:00] Database Connection Error: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+[2026-07-06 09:46:04] Database Connection Error: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+[2026-07-06 09:46:04] webapi/sub_categories: Database connection failed: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+[2026-07-06 09:46:04] Database Connection Error: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+[2026-07-06 09:46:04] Database Connection Error: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+[2026-07-06 09:46:04] Database Connection Error: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+[2026-07-06 09:46:04] webapi/products: Database connection failed: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+026-07-06 09:46:04] webapi/banners: Database connection failed: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+[2026-07-06 09:46:05] Database Connection Error: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+[2026-07-06 09:46:05] webapi/categories: Database connection failed: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+[2026-07-06 09:46:09] Database Connection Error: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+[2026-07-06 09:46:09] webapi/sub_categories: Database connection failed: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+[2026-07-06 09:46:13] Database Connection Error: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+[2026-07-06 09:46:13] webapi/products: Database connection failed: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+[2026-07-06 09:46:17] Database Connection Error: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+[2026-07-06 09:46:17] webapi/series: Database connection failed: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+[2026-07-06 09:46:21] Database Connection Error: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+[2026-07-06 09:46:21] webapi/banners: Database connection failed: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+[2026-07-06 09:46:25] Database Connection Error: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+[2026-07-06 09:46:29] Database Connection Error: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+[2026-07-06 09:46:33] Database Connection Error: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+[2026-07-06 09:46:33] webapi/categories: Database connection failed: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+[2026-07-06 09:46:37] Database Connection Error: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+[2026-07-06 09:46:37] webapi/sub_categories: Database connection failed: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+[2026-07-06 09:46:41] Database Connection Error: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+[2026-07-06 09:46:41] webapi/products: Database connection failed: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+[2026-07-06 09:46:45] Database Connection Error: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+[2026-07-06 09:46:45] Database Connection Error: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+[2026-07-06 09:46:45] webapi/products: Database connection failed: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+[2026-07-06 09:46:49] Database Connection Error: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+[2026-07-06 09:46:49] webapi/categories: Database connection failed: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+[2026-07-06 09:46:49] Database Connection Error: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+[2026-07-06 09:46:49] webapi/products: Database connection failed: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+[2026-07-06 09:46:53] Database Connection Error: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+[2026-07-06 09:46:53] webapi/sub_categories: Database connection failed: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+[2026-07-06 09:46:54] Database Connection Error: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+[2026-07-06 09:46:54] webapi/products: Database connection failed: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+[2026-07-06 09:46:58] Database Connection Error: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+[2026-07-06 09:46:58] webapi/products: Database connection failed: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+[2026-07-06 09:47:02] Database Connection Error: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+[2026-07-06 09:47:02] webapi/series: Database connection failed: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+[2026-07-06 09:47:06] Database Connection Error: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+[2026-07-06 09:47:06] webapi/banners: Database connection failed: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+[2026-07-06 09:47:10] Database Connection Error: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+[2026-07-06 09:47:14] Database Connection Error: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+[2026-07-06 09:47:14] webapi/categories: Database connection failed: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+[2026-07-06 09:47:18] Database Connection Error: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+[2026-07-06 09:47:18] webapi/sub_categories: Database connection failed: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+[2026-07-06 09:47:22] Database Connection Error: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+[2026-07-06 09:47:22] webapi/products: Database connection failed: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+[2026-07-06 09:47:26] Database Connection Error: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+[2026-07-06 09:47:26] webapi/series: Database connection failed: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+[2026-07-06 09:47:30] Database Connection Error: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+[2026-07-06 09:47:30] webapi/banners: Database connection failed: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+[2026-07-06 09:47:34] Database Connection Error: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+[2026-07-06 09:47:34] webapi/sub_categories: Database connection failed: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+[2026-07-06 09:47:38] Database Connection Error: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+[2026-07-06 17:03:16] Database Connection Error: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+[2026-07-06 17:03:16] Database Connection Error: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+[2026-07-06 17:03:16] Database Connection Error: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+[2026-07-06 17:03:16] webapi/banners: Database connection failed: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+[2026-07-06 17:03:16] webapi/products: Database connection failed: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+[2026-07-06 17:03:16] webapi/categories: Database connection failed: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+[2026-07-06 17:03:16] webapi/sub_categories: Database connection failed: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+[2026-07-06 17:03:32] Database Connection Error: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+[2026-07-06 17:03:32] webapi/categories: Database connection failed: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+[2026-07-06 17:03:37] Database Connection Error: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+[2026-07-06 17:03:41] Database Connection Error: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+[2026-07-06 17:03:41] webapi/products: Database connection failed: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it

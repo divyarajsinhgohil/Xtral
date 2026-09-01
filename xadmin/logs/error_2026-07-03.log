@@ -1,0 +1,5 @@
+[2026-07-03 10:22:41] Failed login attempt for username: Admin
+[2026-07-03 14:35:09] Failed login attempt for username: Admin
+[2026-07-03 15:01:16] webapi/contact: SMTP is not configured yet (missing host/username/password/recipient).
+[2026-07-03 15:01:49] webapi/contact: SMTP is not configured yet (missing host/username/password/recipient).
+[2026-07-03 16:23:33] webapi/contact: SMTP is not configured yet (missing host/username/password/recipient).

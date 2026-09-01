@@ -1,0 +1,22 @@
+[2026-07-02 10:56:59] Database Connection Error: SQLSTATE[HY000] [1049] Unknown database 'eleganza_admin'
+[2026-07-02 10:59:13] Database Connection Error: SQLSTATE[HY000] [1049] Unknown database 'eleganza_admin'
+[2026-07-02 10:59:29] Database Connection Error: SQLSTATE[HY000] [1049] Unknown database 'eleganza_admin'
+[2026-07-02 10:59:37] Failed login attempt for username: Admin
+[2026-07-02 11:00:40] Failed login attempt for username: Admin
+[2026-07-02 11:00:49] Failed login attempt for username: divyaraj
+[2026-07-02 11:02:22] Failed login attempt for username: admin
+[2026-07-02 11:02:26] Failed login attempt for username: divyaraj
+[2026-07-02 11:02:28] Failed login attempt for username: divyaraj
+[2026-07-02 11:03:49] Failed login attempt for username: Admin
+[2026-07-02 11:07:14] Database Connection Error: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+[2026-07-02 11:07:42] Database Connection Error: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+[2026-07-02 11:08:05] Database Connection Error: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+[2026-07-02 11:08:26] Database Connection Error: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+[2026-07-02 11:09:03] Database Connection Error: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+[2026-07-02 11:09:19] Database Connection Error: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+[2026-07-02 11:10:42] Database Connection Error: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+[2026-07-02 11:19:45] Database Connection Error: SQLSTATE[HY000] [1049] Unknown database 'xtral'
+[2026-07-02 11:19:46] Database Connection Error: SQLSTATE[HY000] [1049] Unknown database 'xtral'
+[2026-07-02 11:24:30] Failed login attempt for username: admin
+[2026-07-02 11:56:50] Failed login attempt for username: Admin
+[2026-07-02 15:31:05] Failed login attempt for username: Admin
