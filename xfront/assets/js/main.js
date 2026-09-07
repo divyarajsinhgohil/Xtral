@@ -367,15 +367,17 @@
               : '';
             return `
             <div class="cat-mini-item">
-              <div class="cat-mini-cover"${coverStyle}>
-                ${c.thumb_url ? '' : `
-                <div class="cat-mini-top">
-                  <span>X-Tral · Look Book</span>
-                  <h3>${catName}</h3>
+              <a href="catalogue-view.php?pdf=${encodeURIComponent(c.url)}&title=${encodeURIComponent(c.title)}" class="cat-mini-cover-link" style="text-decoration:none;display:block;">
+                <div class="cat-mini-cover"${coverStyle}>
+                  ${c.thumb_url ? '' : `
+                  <div class="cat-mini-top">
+                    <span>X-Tral · Look Book</span>
+                    <h3>${catName}</h3>
+                  </div>
+                  <div class="cat-mini-bot">PDF · ${c.size_mb} MB</div>
+                  `}
                 </div>
-                <div class="cat-mini-bot">PDF · ${c.size_mb} MB</div>
-                `}
-              </div>
+              </a>
               <div class="cat-mini-actions">
                 <a class="btn btn--gold btn--sm" href="${c.url}" download>Download <span class="ar">↓</span></a>
                 <a class="btn btn--outline btn--sm" href="catalogue-view.php?pdf=${encodeURIComponent(c.url)}&title=${encodeURIComponent(c.title)}">View Online</a>

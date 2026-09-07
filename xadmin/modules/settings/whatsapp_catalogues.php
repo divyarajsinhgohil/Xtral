@@ -456,14 +456,10 @@ require_once '../../includes/header.php';
                                         onclick='wcEdit(<?= json_encode($row, JSON_HEX_APOS | JSON_HEX_QUOT) ?>)'>
                                     <i class="fas fa-edit"></i>
                                 </button>
-                                <form method="POST" style="display:inline;"
-                                      onsubmit="return confirm('Permanently delete this catalogue?\n\nThe PDF and thumbnail files will also be removed from disk.\nIf you only want to hide it temporarily, use the Active toggle instead.');">
-                                    <input type="hidden" name="action" value="delete">
-                                    <input type="hidden" name="id" value="<?= $row['id'] ?>">
-                                    <button type="submit" class="btn btn-sm btn-danger">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
-                                </form>
+                                <button type="button" class="btn btn-sm btn-danger"
+                                        onclick="wcConfirmDelete(<?= $row['id'] ?>, <?= htmlspecialchars(json_encode($row['name']), ENT_QUOTES) ?>)">
+                                    <i class="fas fa-trash"></i>
+                                </button>
                             </td>
                         </tr>
                         <?php endforeach; ?>
@@ -530,6 +526,33 @@ require_once '../../includes/header.php';
     </div>
 </div>
 
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteCatalogueModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title"><i class="fas fa-exclamation-triangle me-2"></i>Delete Catalogue</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to permanently delete <strong id="deleteCatalogueName"></strong>?</p>
+                <div class="alert alert-warning mb-0">
+                    <i class="fas fa-info-circle me-2"></i>
+                    The PDF and thumbnail files will also be removed from disk. If you only want to hide it temporarily, use the Active toggle instead.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form method="POST" class="d-inline" id="deleteCatalogueForm">
+                    <input type="hidden" name="action" value="delete">
+                    <input type="hidden" name="id" id="deleteCatalogueId">
+                    <button type="submit" class="btn btn-danger"><i class="fas fa-trash-alt me-1"></i>Delete Catalogue</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Sortable.js for drag-reorder (already used by company_info banners) -->
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 
@@ -560,6 +583,12 @@ function wcEdit(row) {
     document.querySelector('.wc-pdf-required').style.display = 'none'; // not required on edit
     wcCountName();
     new bootstrap.Modal(document.getElementById('catalogueModal')).show();
+}
+
+function wcConfirmDelete(id, name) {
+    document.getElementById('deleteCatalogueId').value = id;
+    document.getElementById('deleteCatalogueName').textContent = name;
+    new bootstrap.Modal(document.getElementById('deleteCatalogueModal')).show();
 }
 
 function wcCountName() {

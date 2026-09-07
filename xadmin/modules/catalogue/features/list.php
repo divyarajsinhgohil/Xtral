@@ -83,11 +83,10 @@ include dirname(__DIR__, 3) . '/includes/header.php';
                                         title="Edit">
                                         <i class="fas fa-edit"></i>
                                     </a>
-                                    <a href="list.php?delete_id=<?= $f['id'] ?>" class="btn btn-sm btn-danger"
-                                        title="Delete"
-                                        onclick="return confirm('Are you sure you want to delete this feature?');">
+                                    <button type="button" class="btn btn-sm btn-danger" title="Delete"
+                                        onclick="confirmDeleteFeature(<?= $f['id'] ?>, <?= htmlspecialchars(json_encode($f['name']), ENT_QUOTES) ?>)">
                                         <i class="fas fa-trash"></i>
-                                    </a>
+                                    </button>
                                 </td>
                             </tr>
                         <?php endforeach; ?>
@@ -105,9 +104,34 @@ include dirname(__DIR__, 3) . '/includes/header.php';
     </div>
 </div>
 
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteFeatureModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title"><i class="fas fa-exclamation-triangle me-2"></i>Confirm Delete</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete feature <strong id="deleteFeatureName"></strong>?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <a href="#" id="confirmDeleteFeatureBtn" class="btn btn-danger"><i class="fas fa-trash-alt me-1"></i>Delete</a>
+            </div>
+        </div>
+    </div>
+</div>
+
 <?php include dirname(__DIR__, 3) . '/includes/footer.php'; ?>
 
 <script>
+    function confirmDeleteFeature(id, name) {
+        document.getElementById('deleteFeatureName').textContent = name;
+        document.getElementById('confirmDeleteFeatureBtn').href = 'list.php?delete_id=' + id;
+        new bootstrap.Modal(document.getElementById('deleteFeatureModal')).show();
+    }
+
     $(document).ready(function () {
         if ($('#featuresTable tbody tr').length > 1) {
             $('#featuresTable').DataTable({
