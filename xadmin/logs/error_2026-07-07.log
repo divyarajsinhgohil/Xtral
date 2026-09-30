@@ -1,0 +1,4 @@
+[2026-07-07 10:56:31] Failed login attempt for username: Admin
+[2026-07-07 12:02:51] webapi/banners: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'banner_type' in 'SELECT'
+[2026-07-07 12:03:11] webapi/banners: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'banner_type' in 'SELECT'
+[2026-07-07 12:03:24] webapi/banners: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'banner_type' in 'SELECT'

@@ -1,0 +1,9 @@
+[2026-08-29 03:29:50] Database Connection Error: SQLSTATE[HY000] [2002] Operation not permitted
+[2026-08-29 03:29:50] Database Connection Error: SQLSTATE[HY000] [2002] Operation not permitted
+[2026-08-29 03:29:50] webapi/sub_categories: Database connection failed: SQLSTATE[HY000] [2002] Operation not permitted
+[2026-08-29 03:29:50] Database Connection Error: SQLSTATE[HY000] [2002] Operation not permitted
+[2026-08-29 03:29:50] webapi/products: Database connection failed: SQLSTATE[HY000] [2002] Operation not permitted
+[2026-08-29 03:29:50] Database Connection Error: SQLSTATE[HY000] [2002] Operation not permitted
+[2026-08-29 03:29:50] webapi/banners: Database connection failed: SQLSTATE[HY000] [2002] Operation not permitted
+[2026-08-29 03:29:51] Database Connection Error: SQLSTATE[HY000] [2002] Operation not permitted
+[2026-08-29 03:29:51] webapi/series: Database connection failed: SQLSTATE[HY000] [2002] Operation not permitted

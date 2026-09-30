@@ -2,7 +2,12 @@
 [2026-07-06 09:31:14] Company info updated by admin
 [2026-07-06 10:07:45] Company info updated by admin
 [2026-07-06 10:35:29] Admin login successful: admin (role: super_admin)
-[2026-07-06 11:15:18] Admin login successful: admin (role: super_admin)
-[2026-07-06 11:25:02] Admin login successful: Admin (role: super_admin)
-[2026-07-06 11:31:40] Admin user updated: id=2 by admin
-[2026-07-06 11:40:02] Company info updated by admin
+[2026-07-06 11:03:53] Admin user deactivated: id=3 (Test Dispatch Manager) by admin
+[2026-07-06 11:09:31] Admin login successful: admin (role: super_admin)
+[2026-07-06 11:15:38] Admin user deleted: id=3 (dispatch) by admin
+[2026-07-06 11:15:42] Admin user deleted: id=4 (mis) by admin
+[2026-07-06 11:15:46] Admin user deleted: id=2 (testsales) by admin
+[2026-07-06 11:15:49] Admin user deleted: id=5 (support) by admin
+[2026-07-06 11:41:19] Company info updated by admin
+[2026-07-06 11:42:59] Company info updated by admin
+[2026-07-06 11:54:27] Admin login successful: Admin (role: super_admin)

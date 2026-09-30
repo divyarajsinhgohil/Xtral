@@ -1,5 +1,0 @@
-User-agent: *
-Allow: /
-Disallow: /xadmin/
-
-Sitemap: https://x-tral.com/sitemap.xml

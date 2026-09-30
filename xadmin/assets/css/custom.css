@@ -6,8 +6,8 @@
 /* Color Variables — X-Tral brand teal (sampled from the logo wordmark) */
 :root {
     --primary-color: #2B676E;
-    --primary-dark: #1C4449;
-    --primary-rgb: 43, 103, 110;
+    --primary-dark:  #1C4449;
+    --primary-rgb:   43, 103, 110;
     --sidebar-width: 250px;
     --navbar-height: 60px;
 }

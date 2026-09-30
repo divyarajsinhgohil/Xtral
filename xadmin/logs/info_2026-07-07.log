@@ -1,7 +1,2 @@
-[2026-07-07 11:20:40] Admin login successful: Admin (role: super_admin)
-[2026-07-07 11:55:13] Admin login successful: Admin (role: super_admin)
-[2026-07-07 12:06:11] Admin user deleted: id=3 (dispatch) by admin
-[2026-07-07 12:06:14] Admin user deleted: id=4 (mis) by admin
-[2026-07-07 12:06:18] Admin user deleted: id=2 (testsales) by admin
-[2026-07-07 12:06:23] Admin user deleted: id=5 (support) by admin
-[2026-07-07 17:34:42] Admin login successful: Admin (role: super_admin)
+[2026-07-07 10:56:38] Admin login successful: Admin (role: super_admin)
+[2026-07-07 12:03:07] Admin login successful: Admin (role: super_admin)
