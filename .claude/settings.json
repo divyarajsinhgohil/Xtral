@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell($s=\"C:\\\\Users\\\\ADMIN\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--xampp-htdocs-Xtral\\\\0d72eac7-494e-4dfd-99f9-c7b345a350c4\\\\scratchpad\"; \\(Get-Content \"$s\\\\crop4.ps1\" | Select-Object -First 14\\) + 'Crop \"40.jpg\" 1001' + 'Crop \"41.jpg\" 98' | Set-Content -Encoding utf8 \"$s\\\\crop5.ps1\"; & \"$s\\\\crop5.ps1\")",
+      "PowerShell(Add-Type -AssemblyName System.Drawing; $p='C:\\\\$Recycle.Bin\\\\S-1-5-21-2674524465-4199632600-4041120969-1000\\\\$RC9LKSS.jpg'; $i=[System.Drawing.Image]::FromFile\\($p\\); \"$\\($i.Width\\)x$\\($i.Height\\)\"; $i.Dispose\\(\\); \\(Get-Item -LiteralPath $p -Force\\).Length)",
+      "PowerShell(& \"C:\\\\Users\\\\ADMIN\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--xampp-htdocs-Xtral\\\\0d72eac7-494e-4dfd-99f9-c7b345a350c4\\\\scratchpad\\\\crop5.ps1\")",
+      "PowerShell(Add-Type -AssemblyName System.Drawing; $o=\"C:\\\\Users\\\\ADMIN\\\\Downloads\\\\New folder\\\\1000x1000\"; Get-ChildItem \"C:\\\\Users\\\\ADMIN\\\\Downloads\\\\New folder\" -File | Where-Object { $_.Extension -match '^\\\\.\\(jpe?g|png|bmp|webp\\)$' } | ForEach-Object { $d=''; try { $i=[System.Drawing.Image]::FromFile\\($_.FullName\\); $d=\"$\\($i.Width\\)x$\\($i.Height\\)\"; $i.Dispose\\(\\) } catch { $d='unreadable' }; $p=Join-Path $o \\([IO.Path]::GetFileNameWithoutExtension\\($_.Name\\)+'.jpg'\\); $oc=''; if \\(Test-Path $p\\) { $oc=\\(Get-Item $p\\).LastWriteTime }; \"$\\($_.Name\\) | $d | src $\\($_.LastWriteTime\\) | out: $oc\" })",
+      "PowerShell(& \"C:\\\\Users\\\\ADMIN\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--xampp-htdocs-Xtral\\\\0d72eac7-494e-4dfd-99f9-c7b345a350c4\\\\scratchpad\\\\crop6.ps1\")",
+      "PowerShell($s=\"C:\\\\Users\\\\ADMIN\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--xampp-htdocs-Xtral\\\\0d72eac7-494e-4dfd-99f9-c7b345a350c4\\\\scratchpad\"; \\(Get-Content \"$s\\\\crop6.ps1\" | Select-Object -First 16\\) + 'Crop \"52.jpg\" 0 371 1577' | Set-Content -Encoding utf8 \"$s\\\\crop7.ps1\"; Get-Content \"$s\\\\crop7.ps1\" | Select-Object -Last 3; & \"$s\\\\crop7.ps1\")",
+      "PowerShell(Add-Type -AssemblyName System.Drawing; $b=[System.Drawing.Bitmap]::FromFile\\(\"C:\\\\Users\\\\ADMIN\\\\Downloads\\\\New folder\\\\53.jpg\"\\); foreach \\($pt in @\\(@\\(0,0\\),@\\(772,0\\),@\\(0,498\\),@\\(772,498\\),@\\(386,0\\),@\\(386,498\\),@\\(0,250\\),@\\(772,250\\)\\)\\) { $c=$b.GetPixel\\($pt[0],$pt[1]\\); \"$\\($pt[0]\\),$\\($pt[1]\\): $\\($c.R\\),$\\($c.G\\),$\\($c.B\\)\" }; $b.Dispose\\(\\))",
+      "PowerShell(& \"C:\\\\Users\\\\ADMIN\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--xampp-htdocs-Xtral\\\\0d72eac7-494e-4dfd-99f9-c7b345a350c4\\\\scratchpad\\\\pad53.ps1\")",
+      "PowerShell(Add-Type -AssemblyName System.Drawing; foreach \\($n in '54.jpg','55.jpg'\\) { $b=[System.Drawing.Bitmap]::FromFile\\(\"C:\\\\Users\\\\ADMIN\\\\Downloads\\\\New folder\\\\$n\"\\); $W=$b.Width-1; $H=$b.Height-1; $out = foreach \\($pt in @\\(@\\(0,0\\),@\\($W,0\\),@\\(0,$H\\),@\\($W,$H\\),@\\([int]\\($W/2\\),0\\),@\\([int]\\($W/2\\),$H\\),@\\(0,[int]\\($H/2\\)\\),@\\($W,[int]\\($H/2\\)\\)\\)\\) { $c=$b.GetPixel\\($pt[0],$pt[1]\\); \"$\\($c.R\\),$\\($c.G\\),$\\($c.B\\)\" }; \"${n}: $\\($out -join ' | '\\)\"; $b.Dispose\\(\\) })",
+      "PowerShell(& \"C:\\\\Users\\\\ADMIN\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--xampp-htdocs-Xtral\\\\0d72eac7-494e-4dfd-99f9-c7b345a350c4\\\\scratchpad\\\\do5455.ps1\")",
+      "PowerShell(& \"C:\\\\xampp\\\\mysql\\\\bin\\\\mysql.exe\" -u root xtral -e \"SHOW COLUMNS FROM catalogue_product_variants\")",
+      "Bash(grep -n \"^button\\\\|^\\\\s*button\\\\s*[,{]\\\\|button {\" assets/css/style.css)",
+      "Bash(curl -sL -A \"WhatsApp/2.23.20.0 A\" \"https://x-tral.com/products/177-BL121000\")",
+      "Bash(curl -sIL -A \"WhatsApp/2.23.20.0 A\" \"https://x-tral.com/products/177-BL121000\")",
+      "Bash(curl -sI -A \"WhatsApp/2.23.20.0 A\" \"https://x-tral.com/xadmin/uploads/catalogue/products/prod_1790070299_6ab24e1bc8199.jpg\")",
+      "PowerShell(& C:\\\\xampp\\\\php\\\\php.exe -l includes\\\\header.php; Select-String -Path includes\\\\header.php -Pattern \"og:|ogImageInfo\" | ForEach-Object { $_.LineNumber.ToString\\(\\) + ': ' + $_.Line.Trim\\(\\) })",
+      "Bash(curl -s -A \"WhatsApp/2.23.20.0 A\" -H \"Range: bytes=0-65535\" \"https://x-tral.com/products/177-BL121000\" -D -)",
+      "PowerShell(& C:\\\\xampp\\\\php\\\\php.exe -l pd.php)",
+      "Bash(python -c ' *)",
+      "Bash(curl -s -o /dev/null -w \"page %{http_code}\\\\n\" http://localhost/Xtral/index.html)",
+      "Bash(curl -s http://localhost/Xtral/xadmin/api/webapi/categories.php)",
+      "Bash(curl -s http://localhost/Xtral/xadmin/api/webapi/products.php)"
+    ]
+  }
+}

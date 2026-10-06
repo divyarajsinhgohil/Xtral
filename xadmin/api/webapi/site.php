@@ -20,4 +20,6 @@ jsonResponse(true, [
     'social_instagram' => getSetting('social_instagram') ?: null,
     'social_youtube'   => getSetting('social_youtube') ?: null,
     'social_twitter'   => getSetting('social_twitter') ?: null,
+    'price_label_1'    => getPriceLabel1(),
+    'price_label_2'    => getPriceLabel2(),
 ]);

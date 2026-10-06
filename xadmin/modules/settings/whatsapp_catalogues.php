@@ -15,6 +15,7 @@
 $pageTitle  = "Website Catalogues";
 $activePage = "whatsapp_catalogues";
 require_once '../../config/db.php';
+require_once '../../includes/catalogue_assets.php';
 requireRole(['super_admin']);
 
 // ---------------------------------------------------------------------------
@@ -283,12 +284,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($hasThumbUpload) {
             $ext         = strtolower(pathinfo($_FILES['thumb']['name'], PATHINFO_EXTENSION));
             $desiredThumb = wc_unique_filename($pdfBase, $ext, $id, 'thumb_filename');
-            if ($thumbFilename && $thumbFilename !== $desiredThumb && file_exists($thumbDir . $thumbFilename)) {
-                @unlink($thumbDir . $thumbFilename);
-            }
             if (!move_uploaded_file($_FILES['thumb']['tmp_name'], $thumbDir . $desiredThumb)) {
                 $_SESSION['error'] = 'Failed to save thumbnail.';
                 header('Location: whatsapp_catalogues.php'); exit;
+            }
+            if ($thumbFilename && $thumbFilename !== $desiredThumb && file_exists($thumbDir . $thumbFilename)) {
+                @unlink($thumbDir . $thumbFilename);
             }
             $thumbFilename = $desiredThumb;
         } elseif ($thumbFilename) {
@@ -419,7 +420,10 @@ require_once '../../includes/header.php';
                         <?php foreach ($catalogues as $row):
                             $pdfUrl   = BASE_URL . '/uploads/catalogue/pdfs/' . rawurlencode($row['pdf_filename']);
                             $thumbUrl = $row['thumb_filename']
-                                ? BASE_URL . '/uploads/catalogue/pdfs/Thumb/' . rawurlencode($row['thumb_filename'])
+                                ? catalogueImageUrl(
+                                    BASE_URL . '/uploads/catalogue/pdfs/Thumb/' . rawurlencode($row['thumb_filename']),
+                                    $thumbDir . $row['thumb_filename']
+                                )
                                 : '';
                         ?>
                         <tr data-id="<?= $row['id'] ?>">

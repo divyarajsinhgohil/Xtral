@@ -5,25 +5,6 @@ include __DIR__ . '/includes/header.php';
 include __DIR__ . '/includes/banner.php';
 ?>
 
-  <!-- ============ PREMIUM HERO ============ -->
-  <section class="hero">
-    <div class="hero-content">
-      <div class="hero-box">
-        <div class="eyebrow">Engineered for precision</div>
-        <h1>Refined Bathware for Modern Living</h1>
-        <p>Premium sanitaryware, bath fittings, wellness solutions and kitchen essentials designed with elegant finishes, reliable performance and everyday comfort.</p>
-        <div class="hero-buttons">
-          <a href="#categories" class="btn btn-light">Explore Categories</a>
-          <a href="contact.php" class="btn btn-outline">Become a Dealer</a>
-        </div>
-      </div>
-    </div>
-    <div class="floating-card">
-      <small>Brand promise</small>
-      <strong>Luxury, durability and water-smart performance.</strong>
-    </div>
-  </section>
-
   <!-- ============ TICKER ============ -->
   <div class="ticker">
     <div class="ticker-track">
@@ -88,38 +69,7 @@ include __DIR__ . '/includes/banner.php';
         </button>
 
         <div class="cat-grid" data-categories data-reveal>
-          <!-- Static fallbacks for Sanitary Ware, Bath Fittings, Kitchen Sinks, Wellness -->
-          <a href="products.php?cat=1" class="cat-card">
-            <img src="assets/img/sanitary_ware_premium.png" alt="Sanitary Ware">
-            <div class="cat-body">
-              <h3>Sanitary Ware</h3>
-              <span class="link">Explore Range &rarr;</span>
-            </div>
-          </a>
-
-          <a href="products.php?cat=2" class="cat-card">
-            <img src="assets/img/bath_fittings_premium.png" alt="Bath Fittings">
-            <div class="cat-body">
-              <h3>Bath Fittings</h3>
-              <span class="link">Explore Range &rarr;</span>
-            </div>
-          </a>
-
-          <a href="products.php?cat=3" class="cat-card">
-            <img src="assets/img/kitchen_sinks_premium.png" alt="Kitchen Sinks">
-            <div class="cat-body">
-              <h3>Kitchen Sinks</h3>
-              <span class="link">Explore Range &rarr;</span>
-            </div>
-          </a>
-
-          <a href="products.php?cat=4" class="cat-card">
-            <img src="assets/img/wellness_premium.png" alt="Wellness">
-            <div class="cat-body">
-              <h3>Wellness</h3>
-              <span class="link">Explore Range &rarr;</span>
-            </div>
-          </a>
+          <!-- Dynamically populated via admin categories -->
         </div>
 
         <button class="cat-arrow cat-arrow--right" data-cat-arrow-right aria-label="Next categories">
@@ -146,10 +96,10 @@ include __DIR__ . '/includes/banner.php';
       </div>
 
       <div class="mosaic" data-reveal>
-        <img class="tall" src="assets/img/wellness_premium.png" alt="Premium basin setting">
+        <img class="tall" src="assets/img/wellness_premium.webp" alt="Premium basin setting" loading="lazy" decoding="async">
         <div class="mosaic-stack">
-          <img src="assets/img/sustain_premium.png" alt="Modern shower">
-          <img src="assets/img/kitchen_sinks_premium.png" alt="Kitchen sink">
+          <img src="assets/img/shower_luxury.webp?v=<?= filemtime(__DIR__ . '/assets/img/shower_luxury.webp') ?>" alt="Modern luxury shower" loading="lazy" decoding="async">
+          <img src="assets/img/kitchen_sinks_premium.webp" alt="Kitchen sink" loading="lazy" decoding="async">
         </div>
       </div>
     </div>
@@ -208,7 +158,7 @@ include __DIR__ . '/includes/banner.php';
       </div>
       <div class="prod-grid" data-featured data-reveal></div>
       <div style="text-align:center; margin-top: 40px;" data-reveal>
-        <a href="products.php" class="btn btn-primary">View all products</a>
+        <a href="products" class="btn btn-primary">View all products</a>
       </div>
     </div>
   </section>
@@ -257,7 +207,7 @@ include __DIR__ . '/includes/banner.php';
         </div>
       </div>
       <div class="sustain-img" data-reveal>
-        <img src="assets/img/sustain_premium.png" alt="Water efficient shower">
+        <img src="assets/img/shower_luxury.webp?v=<?= filemtime(__DIR__ . '/assets/img/shower_luxury.webp') ?>" alt="Water efficient luxury shower" loading="lazy" decoding="async">
       </div>
     </div>
   </section>
@@ -271,8 +221,8 @@ include __DIR__ . '/includes/banner.php';
           <p>Browse categories, finishes, specifications and product details in one place. A premium catalogue experience for dealers, designers and modern projects.</p>
         </div>
         <div class="cta-actions">
-          <a href="catalogue.php" class="btn btn-light">Download PDF</a>
-          <a href="contact.php" class="btn btn-outline">Contact Us</a>
+          <a href="catalogue" class="btn btn-light">Download PDF</a>
+          <a href="contact" class="btn btn-outline">Contact Us</a>
         </div>
       </div>
     </div>

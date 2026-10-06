@@ -129,6 +129,11 @@ include dirname(__DIR__, 3) . '/includes/header.php';
                             </td>
                             <td>
                                 <div class="btn-group btn-group-sm">
+                                    <a href="../products/list.php?category_id=<?= $category['id'] ?>" 
+                                       class="btn btn-outline-info" 
+                                       title="View Products in Category">
+                                        <i class="fas fa-boxes"></i>
+                                    </a>
                                     <a href="edit.php?id=<?= $category['id'] ?>" 
                                        class="btn btn-outline-primary" 
                                        title="Edit">

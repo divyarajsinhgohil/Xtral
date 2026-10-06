@@ -55,19 +55,19 @@ include __DIR__ . '/includes/header.php';
       </div>
       <div class="about-gallery" data-reveal>
         <div class="about-gallery-item about-gallery-item--tall">
-          <img src="assets/img/lifestyle-rosegold-faucet.jpg" alt="Rose gold basin faucet in a marble bathroom">
+          <img src="assets/img/lifestyle-rosegold-faucet.jpg" alt="Rose gold basin faucet in a marble bathroom" loading="lazy" decoding="async">
         </div>
         <div class="about-gallery-item">
-          <img src="assets/img/lifestyle-basin-hextile.jpg" alt="Wall-hung basin against dark hexagonal tile">
+          <img src="assets/img/lifestyle-basin-hextile.jpg" alt="Wall-hung basin against dark hexagonal tile" loading="lazy" decoding="async">
         </div>
         <div class="about-gallery-item">
-          <img src="assets/img/lifestyle-hex-basin-vanity.jpg" alt="Hexagonal vessel basin on a fluted vanity">
+          <img src="assets/img/lifestyle-hex-basin-vanity.jpg" alt="Hexagonal vessel basin on a fluted vanity" loading="lazy" decoding="async">
         </div>
         <div class="about-gallery-item">
-          <img src="assets/img/lifestyle-smart-toilet.png" alt="Wall-hung smart toilet in a minimalist bathroom">
+          <img src="assets/img/lifestyle-smart-toilet.webp" alt="Wall-hung smart toilet in a minimalist bathroom" loading="lazy" decoding="async">
         </div>
         <div class="about-gallery-item">
-          <img src="assets/img/lifestyle-kitchen-sink.jpg" alt="Matte black kitchen faucet over a concrete sink">
+          <img src="assets/img/lifestyle-kitchen-sink.jpg" alt="Matte black kitchen faucet over a concrete sink" loading="lazy" decoding="async">
         </div>
       </div>
     </div>
@@ -91,8 +91,8 @@ include __DIR__ . '/includes/header.php';
           <p>Interested in stocking X-Tral or specifying us for a project? We'd love to hear from you.</p>
         </div>
         <div style="display:flex;gap:14px;flex-wrap:wrap;justify-content:flex-end;">
-          <a href="contact.php" class="btn btn--gold">Become a Dealer <span class="ar">→</span></a>
-          <a href="catalogue.php" class="btn btn--ghost">View Catalogue</a>
+          <a href="contact" class="btn btn--gold">Become a Dealer <span class="ar">→</span></a>
+          <a href="catalogue" class="btn btn--ghost">View Catalogue</a>
         </div>
       </div>
     </div>

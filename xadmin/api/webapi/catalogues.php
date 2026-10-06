@@ -8,6 +8,11 @@
  * Only active rows are returned, in the admin's chosen display order.
  */
 require_once __DIR__ . '/config.php';
+require_once dirname(__DIR__, 2) . '/includes/catalogue_assets.php';
+
+// Do not let a cached response replace the freshly server-rendered cover.
+header('Cache-Control: no-store, max-age=0');
+header('Expires: 0');
 
 requireMethod('GET');
 
@@ -27,7 +32,10 @@ try {
             'category' => $row['name'],
             'title' => $row['name'],
             'url' => uploadUrl($row['pdf_filename'], 'catalogue/pdfs'),
-            'thumb_url' => uploadUrl($row['thumb_filename'], 'catalogue/pdfs/Thumb'),
+            'thumb_url' => catalogueImageUrl(
+                uploadUrl($row['thumb_filename'], 'catalogue/pdfs/Thumb'),
+                $pdfDir . 'Thumb/' . ($row['thumb_filename'] ?? '')
+            ),
             'size_mb' => file_exists($path) ? round(filesize($path) / 1048576, 1) : null,
         ];
     }, $rows);

@@ -16,6 +16,12 @@ if (!$category) {
     exit;
 }
 
+// If display_order is 0 or empty, automatically assign the next display order
+if (empty($category['display_order']) || (int)$category['display_order'] <= 0) {
+    $maxOrder = fetchOne("SELECT MAX(display_order) as max_order FROM catalogue_categories");
+    $category['display_order'] = ($maxOrder['max_order'] ?? 0) + 1;
+}
+
 $pageTitle = "Edit Catalogue Category";
 $activePage = 'catalogue_categories';
 

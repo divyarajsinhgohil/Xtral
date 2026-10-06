@@ -16,6 +16,12 @@ if (!$item) {
     exit;
 }
 
+// If display_order is 0 or empty, automatically assign the next display order
+if (empty($item['display_order']) || (int)$item['display_order'] <= 0) {
+    $maxOrder = fetchOne("SELECT MAX(display_order) as max_order FROM catalogue_series");
+    $item['display_order'] = ($maxOrder['max_order'] ?? 0) + 1;
+}
+
 // Fetch Active Main Categories
 $main_categories = fetchAll("SELECT id, name FROM catalogue_categories WHERE is_active = 1 ORDER BY name ASC");
 

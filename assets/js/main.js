@@ -49,7 +49,7 @@
       headerSearchForm.addEventListener("submit", (e) => {
         e.preventDefault();
         const q = document.getElementById("header-search").value.trim();
-        location.href = q ? `products.php?search=${encodeURIComponent(q)}` : "products.php";
+        location.href = q ? `products?search=${encodeURIComponent(q)}` : "products";
       });
     }
   }
@@ -104,11 +104,16 @@
   }
 
   /* ---- Active nav link by filename ---- */
-  const here = (location.pathname.split("/").pop() || "index.php");
+  const rawPath = (location.pathname.split("/").pop() || "index").split("?")[0].replace(/\.php$/i, "");
+  const here = rawPath === "" ? "index" : rawPath;
   document.querySelectorAll(".nav-links a").forEach(a => {
-    const href = a.getAttribute("href");
-    if (href === here || (here === "" && href === "index.php")) a.classList.add("active");
-    if ((href === "products.php") && (here === "products.php" || here === "pd.php")) a.classList.add("active");
+    const rawHref = (a.getAttribute("href") || "").split("?")[0].replace(/\.php$/i, "");
+    if (rawHref === here || (here === "index" && (rawHref === "" || rawHref === "index"))) {
+      a.classList.add("active");
+    }
+    if (rawHref === "products" && (here === "products" || here === "pd")) {
+      a.classList.add("active");
+    }
   });
 
   /* ---- Reveal on scroll ---- */
@@ -221,10 +226,85 @@
 
   /* ---- Helpers shared by render functions ---- */
   const money = (n) => "₹" + Number(n).toLocaleString("en-IN");
-  // Model codes like "MC 445" display as "MC-445" — spaces read as a typo/gap.
   const dashCode = (code) => code ? String(code).trim().replace(/\s+/g, '-').replace(/-+/g, '-') : code;
+  const mergeCode = (code) => code ? String(code).trim().replace(/[^a-zA-Z0-9]/g, '') : code;
+
+  function renderPriceHtml(price1, price2, isDetail, customLabel1, customLabel2) {
+    const sanitizeGlobal = (v, fallback) => {
+      if (!v) return fallback;
+      const s = String(v).trim().toLowerCase();
+      if (s === 'fabio' || s === 'fabio:') return fallback;
+      return v;
+    };
+
+    let curProd1 = null;
+    let curProd2 = null;
+    if (isDetail && window.XTRAL_CURRENT_PROD) {
+      curProd1 = window.XTRAL_CURRENT_PROD.price_label_1 || null;
+      curProd2 = window.XTRAL_CURRENT_PROD.price_label_2 || null;
+    }
+
+    const defaultLabel1 = sanitizeGlobal(window.XTRAL_PRICE_LABEL_1 || (window.XTRAL_SITE && window.XTRAL_SITE.price_label_1), 'Zone 1');
+    const defaultLabel2 = sanitizeGlobal(window.XTRAL_PRICE_LABEL_2 || (window.XTRAL_SITE && window.XTRAL_SITE.price_label_2), 'Zone 2');
+    const label1 = customLabel1 || curProd1 || defaultLabel1;
+    const label2 = customLabel2 || curProd2 || defaultLabel2;
+    const cleanLabel = (lbl) => String(lbl || '').trim().replace(/:+$/, '');
+    const cleanL1 = cleanLabel(label1);
+    const cleanL2 = cleanLabel(label2);
+
+    const p1 = Number(price1);
+    const p2 = Number(price2);
+    const hasP1 = !isNaN(p1) && p1 > 0;
+    const hasP2 = !isNaN(p2) && p2 > 0;
+
+    if (hasP1 && hasP2) {
+      if (isDetail) {
+        return `
+          <div class="pd-dual-prices">
+            <div class="pd-dual-prices-inline">
+              <div class="pd-price-row">
+                <span class="pd-price-label">${cleanL1}:</span>
+                <span class="pd-price-val">${money(p1)}</span>
+              </div>
+              <span class="pd-price-divider" aria-hidden="true">|</span>
+              <div class="pd-price-row">
+                <span class="pd-price-label">${cleanL2}:</span>
+                <span class="pd-price-val">${money(p2)}</span>
+              </div>
+            </div>
+            <small class="pd-tax-note">M.R.P. (incl. of all taxes)</small>
+          </div>
+        `;
+      } else {
+        return `
+          <div class="dual-prices">
+            <div class="dual-price-item"><span class="dp-label">${cleanL1}:</span> <span class="dp-val">${money(p1)}</span></div>
+            <div class="dual-price-item"><span class="dp-label">${cleanL2}:</span> <span class="dp-val">${money(p2)}</span></div>
+          </div>
+        `;
+      }
+    }
+
+    if (hasP1) {
+      return isDetail
+        ? `${money(p1)} <small>M.R.P. (incl. of all taxes)</small>`
+        : `<span class="price">${money(p1)}</span>`;
+    }
+
+    if (hasP2) {
+      return isDetail
+        ? `${money(p2)} <small>M.R.P. (incl. of all taxes)</small>`
+        : `<span class="price">${money(p2)}</span>`;
+    }
+
+    return isDetail ? 'On request' : '<span class="price">On request</span>';
+  }
+
   function productCard(p) {
-    const linkId = encodeURIComponent(dashCode(p.code && p.code !== '—' ? p.code : p.id));
+    const rawCode = p.code && p.code !== '—' ? mergeCode(p.code) : '';
+    // URL = {id}-{code}  e.g. products/45-WB123016
+    // The numeric ID is the real key; the code makes it human-readable.
+    const linkId = rawCode ? `${p.id}-${rawCode}` : p.id;
     let sizeRange = "";
     if (p.variants && p.variants.type === "size" && p.variants.items.length > 0) {
       sizeRange = p.variants.items.map(v => v.name).join(", ");
@@ -232,10 +312,10 @@
       sizeRange = p.dimensions;
     }
     return `
-      <a class="prod-card" href="pd.php?id=${linkId}">
+      <a class="prod-card" href="products/${linkId}">
         <div class="media">
           ${p.tag ? `<span class="tag">${p.tag}</span>` : ""}
-          <img src="${p.img}" alt="${p.name}">
+          <img src="${p.img}" alt="${p.name}" loading="lazy" decoding="async">
         </div>
         <div class="info">
           <span class="cat-lbl">${xtralCatName(p.cat)}</span>
@@ -243,7 +323,7 @@
           <span class="code">Model ${dashCode(p.code)}</span>
           ${sizeRange ? `<span class="card-sizes" style="font-size:0.75rem; color:var(--muted); display:block; margin-top:2px;">Sizes: ${sizeRange}</span>` : ""}
           <div class="foot">
-            ${p.price ? `<span class="price">${money(p.price)}</span>` : `<span class="price">On request</span>`}
+            ${renderPriceHtml(p.price, p.price_zone2, false, p.price_label_1, p.price_label_2)}
             <span class="view">View</span>
           </div>
         </div>
@@ -267,9 +347,9 @@
       bannerHost.innerHTML = XTRAL_BANNERS.map((b, i) => `
         ${b.link ? `<a class="banner-slide${i === 0 ? " active" : ""}" href="${b.link}">` : `<div class="banner-slide${i === 0 ? " active" : ""}">`}
           ${b.type === 'video' ? `
-            <video src="${b.video}" autoplay loop muted playsinline ${i === 0 ? "" : 'preload="metadata"'} style="width: 100%; height: 100%; object-fit: cover;"></video>
+            <video src="${b.video}" ${i === 0 ? 'autoplay loop muted playsinline' : 'loop muted playsinline preload="none"'} style="width: 100%; height: 100%; object-fit: cover;"></video>
           ` : `
-            <img src="${b.img}" alt="${b.title}" ${i === 0 ? "" : 'loading="lazy"'}>
+            <img src="${b.img}" alt="${b.title}" ${i === 0 ? 'fetchpriority="high"' : 'loading="lazy" decoding="async"'}>
           `}
         ${b.link ? "</a>" : "</div>"}`).join("");
 
@@ -285,10 +365,14 @@
         const img = activeSlide.querySelector("img");
         if (img && img.naturalWidth && img.naturalHeight) {
           bannerHost.style.aspectRatio = `${img.naturalWidth} / ${img.naturalHeight}`;
+          bannerHost.style.minHeight = "";
+          bannerSection.style.minHeight = "";
         } else {
           const video = activeSlide.querySelector("video");
           if (video && video.videoWidth && video.videoHeight) {
             bannerHost.style.aspectRatio = `${video.videoWidth} / ${video.videoHeight}`;
+            bannerHost.style.minHeight = "";
+            bannerSection.style.minHeight = "";
           }
         }
       };
@@ -353,13 +437,15 @@
     /* ---- Catalogue page: category PDFs (live from admin) ---- */
     const pdfHost = document.querySelector("[data-catalogue-list]");
     if (pdfHost) {
-      fetch(`${API_BASE}/catalogues.php`)
+      fetch(`${API_BASE}/catalogues.php`, { cache: 'no-store' })
         .then(r => r.json())
         .then(j => {
           if (!j.success || !j.data.length) {
+            pdfHost.classList.remove("cat-cards-grid--single");
             pdfHost.innerHTML = `<p class="muted" style="text-align:center;grid-column:1/-1;">No catalogues available yet.</p>`;
             return;
           }
+          pdfHost.classList.toggle("cat-cards-grid--single", j.data.length === 1);
           pdfHost.innerHTML = j.data.map(c => {
             const catName = c.category || c.title.replace(' Catalogue', '');
             const coverStyle = c.thumb_url
@@ -368,7 +454,7 @@
             const sizeText = c.size_mb ? `PDF · ${c.size_mb} MB` : 'PDF Brochure';
             return `
             <div class="cat-mini-item">
-              <a href="catalogue-view.php?pdf=${encodeURIComponent(c.url)}&title=${encodeURIComponent(c.title)}" class="cat-mini-cover-link">
+              <a href="catalogue-view?pdf=${encodeURIComponent(c.url)}&title=${encodeURIComponent(c.title)}" class="cat-mini-cover-link">
                 <div class="cat-mini-cover"${coverStyle}>
                   ${c.thumb_url ? '' : `
                   <div class="cat-mini-top">
@@ -384,8 +470,8 @@
                 <span class="cat-mini-size">${sizeText}</span>
               </div>
               <div class="cat-mini-actions">
-                <a class="btn btn--gold btn--sm" href="${c.url}" download>Download <span class="ar">↓</span></a>
-                <a class="btn btn--outline btn--sm" href="catalogue-view.php?pdf=${encodeURIComponent(c.url)}&title=${encodeURIComponent(c.title)}">View Online</a>
+                <a class="btn btn--gold btn--sm" href="catalogue-view?pdf=${encodeURIComponent(c.url)}&title=${encodeURIComponent(c.title)}"><i class="fa-solid fa-book-open"></i> Open 3D Lookbook</a>
+                <a class="btn btn--outline btn--sm" href="${c.url}" download>PDF <span class="ar">↓</span></a>
               </div>
             </div>`;
           }).join("");
@@ -399,8 +485,8 @@
     /* ---- Footer: category links (live from admin) ---- */
     document.querySelectorAll("[data-footer-cats]").forEach(host => {
       host.innerHTML = XTRAL_CATEGORIES.slice(0, 4).map(c =>
-        `<a href="products.php?cat=${c.id}">${c.name}</a>`
-      ).join("") + `<a href="products.php">View all</a>`;
+        `<a href="products?cat=${c.id}">${c.name}</a>`
+      ).join("") + `<a href="products">View all</a>`;
     });
 
     /* ---- Home: featured products + category grid ---- */
@@ -419,15 +505,15 @@
         let imageSrc = c.img;
         if (!imageSrc) {
           if (nameLower.includes("sanitary")) {
-            imageSrc = "assets/img/sanitary_ware_premium.png";
+            imageSrc = "assets/img/sanitary_ware_premium.webp";
           } else if (nameLower.includes("fitting") || nameLower.includes("faucet")) {
-            imageSrc = "assets/img/bath_fittings_premium.png";
+            imageSrc = "assets/img/bath_fittings_premium.webp";
           } else if (nameLower.includes("sink")) {
-            imageSrc = "assets/img/kitchen_sinks_premium.png";
+            imageSrc = "assets/img/kitchen_sinks_premium.webp";
           } else if (nameLower.includes("wellness")) {
-            imageSrc = "assets/img/wellness_premium.png";
+            imageSrc = "assets/img/wellness_premium.webp";
           } else {
-            imageSrc = "assets/img/hero_premium_bg.png";
+            imageSrc = "assets/img/hero_premium_bg.webp";
           }
         }
 
@@ -469,8 +555,8 @@
         }
 
         return `
-          <a class="cat-card cat-card--photo" href="products.php?cat=${c.id}">
-            <img src="${imageSrc}" alt="${c.name}">
+          <a class="cat-card cat-card--photo" href="collections?cat=${c.id}">
+            <img src="${imageSrc}" alt="${c.name}" loading="lazy" decoding="async">
             <div class="cat-body">
               <h3>${c.name}</h3>
               <span class="link">Explore &rarr;</span>
@@ -499,10 +585,10 @@
       const newSeries = XTRAL_SERIES.filter(s => s.is_new_arrival);
       if (newSeries.length > 0) {
         newArrivalsHost.innerHTML = newSeries.map(s => {
-          const imgUrl = s.img ? s.img : 'assets/img/hero_premium_bg.png';
+          const imgUrl = s.img ? s.img : 'assets/img/hero_premium_bg.webp';
           return `
-            <a class="cat-card cat-card--photo" href="products.php?series=${s.id}">
-              <img src="${imgUrl}" alt="${s.name}">
+            <a class="cat-card cat-card--photo" href="products?series=${s.id}">
+              <img src="${imgUrl}" alt="${s.name}" loading="lazy" decoding="async">
               <div class="cat-body">
                 <h3>${s.name}</h3>
                 <span class="link">Explore &rarr;</span>
@@ -548,169 +634,258 @@
        ?cat=ID → sub-category tiles (or series/products if none exist)
        ?cat=ID&sub=ID → series tiles (or products if no series)
        ?series=ID → product list of that series */
+    /* ---- Shared tile card renderer ---- */
+    const tileCard = (href, img, name, hint) => {
+      let imageSrc = img;
+      if (!imageSrc) {
+        const nameLower = (name || "").toLowerCase();
+        if (nameLower.includes("sanitary")) {
+          imageSrc = "assets/img/sanitary_ware_premium.webp";
+        } else if (nameLower.includes("fitting") || nameLower.includes("faucet") || nameLower.includes("cock") || nameLower.includes("tap")) {
+          imageSrc = "assets/img/bath_fittings_premium.webp";
+        } else if (nameLower.includes("sink")) {
+          imageSrc = "assets/img/kitchen_sinks_premium.webp";
+        } else if (nameLower.includes("wellness") || nameLower.includes("tub") || nameLower.includes("bath")) {
+          imageSrc = "assets/img/wellness_premium.webp";
+        } else {
+          imageSrc = "assets/img/hero_premium_bg.webp";
+        }
+      }
+      return `
+      <a class="cat-card cat-card--photo" href="${href}">
+        <img src="${imageSrc}" alt="${name}" loading="lazy" decoding="async">
+        <div class="cat-body">
+          <h3>${name}</h3>
+          <span class="link">${hint} &rarr;</span>
+        </div>
+      </a>`;
+    };
+
+    /* =====================================================================
+       COLLECTIONS PAGE (collections.php)
+       Shows all Categories -> on click shows Series -> on click goes to products.php?series=ID
+       ===================================================================== */
+    const collectionsHost = document.querySelector("[data-sub-tiles-grid]");
+    if (collectionsHost) {
+      const params = new URLSearchParams(location.search);
+      const catId = params.get("cat");
+      const titleEl = document.querySelector("[data-cat-title]");
+      const subEl = document.querySelector("[data-cat-sub]");
+      const eyebrowEl = document.querySelector("[data-cat-eyebrow]");
+
+      if (catId) {
+        const cat = XTRAL_CATEGORIES.find(c => c.id === catId);
+        const catName = cat ? cat.name : "Category";
+        const catSeries = XTRAL_SERIES.filter(s => s.cat === catId);
+
+        if (catSeries.length > 0) {
+          collectionsHost.innerHTML = catSeries.map(s =>
+            tileCard(`products?cat=${catId}&series=${s.id}`, s.img, s.name, "Explore Series")
+          ).join("");
+          if (titleEl) titleEl.textContent = catName;
+          if (subEl) subEl.textContent = (cat && cat.blurb) ? cat.blurb : "Select a series to explore designs and models.";
+          if (eyebrowEl) {
+            eyebrowEl.innerHTML = `<a href="collections" style="color:inherit;text-decoration:none;">Our Collection</a> <span style="opacity:0.6;">/</span> <span>${catName}</span>`;
+          }
+        } else {
+          // If no series under category, show category products directly
+          window.location.replace(`products?cat=${catId}`);
+        }
+      } else {
+        // Top-level: All Categories
+        collectionsHost.innerHTML = XTRAL_CATEGORIES.map(c =>
+          tileCard(`collections?cat=${c.id}`, c.img, c.name, "Explore Collection")
+        ).join("");
+        if (titleEl) titleEl.textContent = "Our Collection";
+        if (subEl) subEl.textContent = "Explore X-Tral's thoughtfully designed collections and series.";
+        if (eyebrowEl) eyebrowEl.textContent = "Our Collection";
+      }
+    }
+
+    /* =====================================================================
+       PRODUCTS PAGE (products.php)
+       Directly lists products with instant search, filter drawer & pagination
+       ===================================================================== */
     const grid = document.querySelector("[data-product-grid]");
     if (grid) {
       const params = new URLSearchParams(location.search);
-      let current = params.get("cat") || "all";
-      // Unknown category in the URL → show everything
-      if (current !== "all" && !XTRAL_CATEGORIES.some(c => c.id === current)) current = "all";
+      const seriesParam = params.get("series");
+      const subParam = params.get("sub");
+      const catParam = params.get("cat");
 
-      const titleEl = document.querySelector("[data-cat-title]");
-      const subEl = document.querySelector("[data-cat-sub]");
-      const chipHost = document.querySelector("[data-filters]");
-      const pagHost = document.querySelector("[data-pagination]");
-      const toolbarEl = document.querySelector(".toolbar");
+      const seriesObj = seriesParam ? (XTRAL_SERIES.find(s => String(s.id) === String(seriesParam)) || null) : null;
+      const subObj = (!seriesObj && subParam) ? (XTRAL_SUBCATS.find(s => String(s.id) === String(subParam)) || null) : null;
 
-      const seriesObj = XTRAL_SERIES.find(s => s.id === params.get("series")) || null;
-      const subObj = !seriesObj ? (XTRAL_SUBCATS.find(s => s.id === params.get("sub")) || null) : null;
-
-      const tileCard = (href, img, name, hint) => `
-        <a class="cat-card cat-card--photo" href="${href}">
-          <img src="${img || 'assets/img/hero_premium_bg.png'}" alt="${name}">
-          <div class="cat-body">
-            <h3>${name}</h3>
-            <span class="link">${hint} &rarr;</span>
-          </div>
-        </a>`;
-
-      // ---- Drill-down levels (tile pages) ----
-      const subTilesHost = document.querySelector("[data-sub-tiles-grid]");
-      let tilesToShow = null;
-      let tilesTitle = "";
-      let tilesBlurb = "";
-
-      if (subObj) {
-        const sers = XTRAL_SERIES.filter(s => s.sub === subObj.id);
-        if (sers.length) {
-          tilesToShow = sers.map(s => tileCard(`products.php?series=${s.id}`, s.img, s.name, "Explore"));
-          tilesTitle = subObj.name;
-          tilesBlurb = subObj.blurb || "Select a series to explore.";
-        }
-      } else if (!seriesObj && current !== "all") {
-        const subs = XTRAL_SUBCATS.filter(s => s.cat === current);
-        const directSeries = XTRAL_SERIES.filter(s => s.cat === current && !s.sub);
-        const cat = XTRAL_CATEGORIES.find(c => c.id === current);
-        const catBlurb = (cat && cat.blurb) ? cat.blurb : "Choose a range to explore.";
-        if (subs.length || directSeries.length) {
-          tilesToShow = subs.map(s => tileCard(`products.php?cat=${current}&sub=${s.id}`, s.img, s.name, "Explore"))
-            .concat(directSeries.map(s => tileCard(`products.php?series=${s.id}`, s.img, s.name, "Explore")));
-          tilesTitle = xtralCatName(current);
-          tilesBlurb = catBlurb;
-        }
+      let selectedCategory = catParam || (seriesObj ? String(seriesObj.cat) : (subObj ? String(subObj.cat) : "all"));
+      if (selectedCategory !== "all" && !XTRAL_CATEGORIES.some(c => String(c.id) === String(selectedCategory))) {
+        selectedCategory = "all";
       }
 
-      if (subTilesHost) {
-        if (tilesToShow && tilesToShow.length) {
-          subTilesHost.innerHTML = tilesToShow.join("");
-          subTilesHost.style.display = "grid";
-          if (titleEl) titleEl.textContent = tilesTitle;
-          if (subEl) subEl.textContent = tilesBlurb;
-        } else {
-          subTilesHost.innerHTML = "";
-          subTilesHost.style.display = "none";
-        }
+      let selectedSeries = seriesObj ? String(seriesObj.id) : (seriesParam || "all");
+      if (selectedSeries !== "all" && !XTRAL_SERIES.some(s => String(s.id) === String(selectedSeries))) {
+        selectedSeries = "all";
       }
 
-      // ---- Product list mode (all products / category / sub / series) ----
-      let baseList = null, baseTitle = null, baseBlurb = null;
-      if (seriesObj) {
-        baseList = XTRAL_PRODUCTS.filter(p => p.seriesId === seriesObj.id);
-        baseTitle = seriesObj.name;
-        baseBlurb = seriesObj.blurb || "All products in this series.";
-      } else if (subObj) {
-        baseList = XTRAL_PRODUCTS.filter(p => p.subId === subObj.id);
-        baseTitle = subObj.name;
-        baseBlurb = subObj.blurb || "All products in this range.";
-      }
-      // Chips only make sense on the flat all/category listing
-      const showChips = baseList === null;
+      let selectedSub = subObj ? String(subObj.id) : (subParam || "all");
 
-      let currentPage = 1;
-      const itemsPerPage = 9;
-      let searchVal = (params.get("search") || "").toLowerCase().trim();
-
-      const searchInput = document.getElementById("catalog-search");
-      if (searchInput) {
-        if (searchVal) searchInput.value = params.get("search");
-        searchInput.addEventListener("input", (e) => {
-          searchVal = e.target.value.toLowerCase().trim();
-          currentPage = 1; // reset page on search
-          render();
-        });
-      }
-
-      // Category Populating
-      const categoryOptionsContainer = document.querySelector("#select-category .custom-options");
-      const catTriggerLabel = document.querySelector("#select-category .custom-select-trigger [data-selected-label]");
-      if (categoryOptionsContainer) {
-        categoryOptionsContainer.innerHTML = '<div class="custom-option selected" data-value="all">All Categories</div>' +
-          XTRAL_CATEGORIES.map(c => `<div class="custom-option" data-value="${c.id}">${c.name}</div>`).join("");
-        if (current !== "all") {
-          const matchingCat = XTRAL_CATEGORIES.find(c => c.id === current);
-          if (catTriggerLabel && matchingCat) {
-            catTriggerLabel.textContent = matchingCat.name;
-          }
-          // Highlight active option
-          categoryOptionsContainer.querySelectorAll(".custom-option").forEach(opt => {
-            if (opt.dataset.value === current) opt.classList.add("selected");
-            else opt.classList.remove("selected");
-          });
-        }
-      }
-
-      // Collapsible Filters Panel Toggle
-      const toggleFilterBtn = document.getElementById("toggle-filter-btn");
-      const filterDrawer = document.getElementById("filter-drawer");
-      if (toggleFilterBtn && filterDrawer) {
-        toggleFilterBtn.addEventListener("click", () => {
-          const isHidden = filterDrawer.style.display === "none";
-          filterDrawer.style.display = isHidden ? "block" : "none";
-        });
-      }
-
-      // Filter state variables
-      let selectedCategory = current;
       let minPrice = null;
       let maxPrice = null;
       let currentSort = "default";
+
+      const titleEl = document.querySelector("[data-cat-title]");
+      const subEl = document.querySelector("[data-cat-sub]");
+      const eyebrowEl = document.querySelector("[data-cat-eyebrow]");
+      const pagHost = document.querySelector("[data-pagination]");
+      const toolbarEl = document.querySelector(".toolbar");
+      const filterDrawer = document.getElementById("filter-drawer");
+      const toggleFilterBtn = document.getElementById("toggle-filter-btn");
+
+      const rawPageParam = (params.get("page") || "").toLowerCase().trim();
+      const pageParam = parseInt(rawPageParam, 10);
+      let isLastPageRequested = rawPageParam === "last" || rawPageParam === "end";
+      let currentPage = isLastPageRequested ? Infinity : ((!isNaN(pageParam) && pageParam > 0) ? pageParam : 1);
+      const itemsPerPage = 12;
+      let searchVal = (params.get("search") || "").toLowerCase().trim();
+
+      function updateUrlPage(page, replace = false) {
+        const url = new URL(location.href);
+        const prevPageInUrl = url.searchParams.get("page");
+        if (page > 1) {
+          url.searchParams.set("page", page);
+        } else {
+          url.searchParams.delete("page");
+        }
+        const newPageInUrl = url.searchParams.get("page");
+        if (replace && prevPageInUrl === newPageInUrl) {
+          return;
+        }
+        if (replace) {
+          history.replaceState({ page }, "", url);
+        } else {
+          history.pushState({ page }, "", url);
+        }
+      }
+
+      function populateCategories() {
+        const categoryOptionsContainer = document.querySelector("#select-category .custom-options");
+        const catTriggerLabel = document.querySelector("#select-category .custom-select-trigger [data-selected-label]");
+        if (!categoryOptionsContainer) return;
+
+        let html = `<div class="custom-option${selectedCategory === "all" ? " selected" : ""}" data-value="all">All Categories</div>`;
+        html += XTRAL_CATEGORIES.map(c =>
+          `<div class="custom-option${String(c.id) === String(selectedCategory) ? " selected" : ""}" data-value="${c.id}">${c.name}</div>`
+        ).join("");
+        categoryOptionsContainer.innerHTML = html;
+
+        if (catTriggerLabel) {
+          const activeCat = XTRAL_CATEGORIES.find(c => String(c.id) === String(selectedCategory));
+          catTriggerLabel.textContent = activeCat ? activeCat.name : "All Categories";
+        }
+      }
+
+      function updateFilterVisibility() {
+        const filterGroupCategory = document.getElementById("filter-group-category");
+        const filterGroupSeries = document.getElementById("filter-group-series");
+        if (!filterGroupCategory || !filterGroupSeries) return;
+
+        // When into a series or category: hide Category section, show Series section
+        if (selectedSeries !== "all" || selectedCategory !== "all") {
+          filterGroupCategory.style.display = "none";
+          filterGroupSeries.style.display = "flex";
+        } else {
+          // When on all products: show Category section, hide Series section
+          filterGroupCategory.style.display = "flex";
+          filterGroupSeries.style.display = "none";
+        }
+      }
+
+      function populateSeries() {
+        const seriesOptionsContainer = document.querySelector("#select-series .custom-options");
+        const seriesTriggerLabel = document.querySelector("#select-series .custom-select-trigger [data-selected-label]");
+        if (!seriesOptionsContainer) return;
+
+        let availableSeries = XTRAL_SERIES;
+        if (selectedCategory !== "all") {
+          availableSeries = XTRAL_SERIES.filter(s => String(s.cat) === String(selectedCategory));
+        }
+
+        if (selectedSeries !== "all" && !availableSeries.some(s => String(s.id) === String(selectedSeries))) {
+          selectedSeries = "all";
+        }
+
+        let html = `<div class="custom-option${selectedSeries === "all" ? " selected" : ""}" data-value="all">All Series</div>`;
+        if (availableSeries.length > 0) {
+          html += availableSeries.map(s =>
+            `<div class="custom-option${String(s.id) === String(selectedSeries) ? " selected" : ""}" data-value="${s.id}">${s.name}</div>`
+          ).join("");
+        }
+
+        // Option to switch category back to All Categories from the Series dropdown
+        if (selectedCategory !== "all") {
+          html += `<div class="custom-option" data-value="__all_categories__" style="border-top: 1px solid var(--line); font-weight: 600; color: var(--teal-700);">&larr; All Categories</div>`;
+        }
+
+        seriesOptionsContainer.innerHTML = html;
+
+        if (seriesTriggerLabel) {
+          const activeSeries = XTRAL_SERIES.find(s => String(s.id) === String(selectedSeries));
+          seriesTriggerLabel.textContent = activeSeries ? activeSeries.name : "All Series";
+        }
+
+        updateFilterVisibility();
+      }
+
+      populateCategories();
+      populateSeries();
+
+      // Collapsible Filters Panel Toggle
+      if (toggleFilterBtn && filterDrawer) {
+        toggleFilterBtn.onclick = function (e) {
+          e.preventDefault();
+          const isHidden = filterDrawer.style.display === "none" || getComputedStyle(filterDrawer).display === "none";
+          filterDrawer.style.display = isHidden ? "block" : "none";
+          toggleFilterBtn.classList.toggle("active", isHidden);
+        };
+      }
 
       // Toggle Custom Dropdown Open/Close
       document.querySelectorAll(".custom-select").forEach(select => {
         const trigger = select.querySelector(".custom-select-trigger");
         if (trigger) {
-          trigger.addEventListener("click", (e) => {
+          trigger.onclick = function (e) {
             e.stopPropagation();
-            document.querySelectorAll(".custom-select").forEach(s => {
-              if (s !== select) s.classList.remove("open");
-            });
-            select.classList.toggle("open");
-          });
+            const wasOpen = select.classList.contains("open");
+            document.querySelectorAll(".custom-select").forEach(s => s.classList.remove("open"));
+            if (!wasOpen) select.classList.add("open");
+          };
         }
       });
 
       // Click outside to close custom select dropdowns
-      document.addEventListener("click", () => {
-        document.querySelectorAll(".custom-select").forEach(select => {
-          select.classList.remove("open");
+      if (!window.__xtralSelectClickBound) {
+        window.__xtralSelectClickBound = true;
+        document.addEventListener("click", () => {
+          document.querySelectorAll(".custom-select").forEach(select => {
+            select.classList.remove("open");
+          });
         });
-      });
+      }
 
-      // Bind instant reactive listeners for Category
+      // Bind Category Option Click
+      const categoryOptionsContainer = document.querySelector("#select-category .custom-options");
       if (categoryOptionsContainer) {
-        categoryOptionsContainer.addEventListener("click", (e) => {
+        categoryOptionsContainer.onclick = function (e) {
           const opt = e.target.closest(".custom-option");
           if (!opt) return;
 
           selectedCategory = opt.dataset.value;
+          selectedSeries = "all";
+          selectedSub = "all";
 
-          // Update highlights
-          categoryOptionsContainer.querySelectorAll(".custom-option").forEach(o => o.classList.remove("selected"));
-          opt.classList.add("selected");
+          populateCategories();
+          populateSeries();
+          updateFilterVisibility();
 
-          // Update label text
-          if (catTriggerLabel) catTriggerLabel.textContent = opt.textContent;
-
-          // Close dropdown
           opt.closest(".custom-select").classList.remove("open");
 
           // Sync URL search params
@@ -720,100 +895,170 @@
           } else {
             url.searchParams.delete("cat");
           }
-
-          if (selectedCategory !== current) {
-            url.searchParams.delete("sub");
-            url.searchParams.delete("series");
-            current = selectedCategory;
-            baseList = null;
-          }
+          url.searchParams.delete("sub");
+          url.searchParams.delete("series");
+          url.searchParams.delete("page");
           history.replaceState(null, "", url);
-
-          // Hide subcategories/series cards grid to show products directly
-          const subTilesHost = document.querySelector("[data-sub-tiles-grid]");
-          if (subTilesHost) {
-            subTilesHost.innerHTML = "";
-            subTilesHost.style.display = "none";
-          }
 
           currentPage = 1;
           render();
+        };
+      }
 
-          // Collapse the drawer
-          if (filterDrawer) filterDrawer.style.display = "none";
-        });
+      // Bind Series Option Click
+      const seriesOptionsContainer = document.querySelector("#select-series .custom-options");
+      if (seriesOptionsContainer) {
+        seriesOptionsContainer.onclick = function (e) {
+          const opt = e.target.closest(".custom-option");
+          if (!opt) return;
+
+          const val = opt.dataset.value;
+
+          if (val === "__all_categories__") {
+            // User requested to switch back to All Categories
+            selectedCategory = "all";
+            selectedSeries = "all";
+            selectedSub = "all";
+
+            populateCategories();
+            populateSeries();
+            updateFilterVisibility();
+
+            opt.closest(".custom-select").classList.remove("open");
+
+            const url = new URL(location);
+            url.searchParams.delete("cat");
+            url.searchParams.delete("series");
+            url.searchParams.delete("sub");
+            url.searchParams.delete("page");
+            history.replaceState(null, "", url);
+
+            currentPage = 1;
+            render();
+            return;
+          }
+
+          selectedSeries = val;
+
+          if (selectedSeries !== "all") {
+            const foundSeries = XTRAL_SERIES.find(s => String(s.id) === String(selectedSeries));
+            if (foundSeries && String(foundSeries.cat) !== String(selectedCategory)) {
+              selectedCategory = String(foundSeries.cat);
+              populateCategories();
+            }
+          }
+
+          populateSeries();
+          updateFilterVisibility();
+
+          opt.closest(".custom-select").classList.remove("open");
+
+          // Sync URL search params
+          const url = new URL(location);
+          if (selectedSeries !== "all") {
+            url.searchParams.set("series", selectedSeries);
+          } else {
+            url.searchParams.delete("series");
+          }
+          if (selectedCategory !== "all") {
+            url.searchParams.set("cat", selectedCategory);
+          } else {
+            url.searchParams.delete("cat");
+          }
+          url.searchParams.delete("sub");
+          url.searchParams.delete("page");
+          history.replaceState(null, "", url);
+
+          currentPage = 1;
+          render();
+        };
       }
 
       const minPriceInput = document.getElementById("filter-price-min");
       if (minPriceInput) {
-        minPriceInput.addEventListener("input", (e) => {
+        minPriceInput.oninput = function (e) {
           const val = e.target.value.trim();
           minPrice = val !== "" ? Number(val) : null;
           currentPage = 1;
+          updateUrlPage(1, true);
           render();
-        });
+        };
       }
 
       const maxPriceInput = document.getElementById("filter-price-max");
       if (maxPriceInput) {
-        maxPriceInput.addEventListener("input", (e) => {
+        maxPriceInput.oninput = function (e) {
           const val = e.target.value.trim();
           maxPrice = val !== "" ? Number(val) : null;
           currentPage = 1;
+          updateUrlPage(1, true);
           render();
-        });
+        };
       }
 
-      // Bind instant reactive listeners for Sort By
+      const searchInput = document.getElementById("catalog-search");
+      if (searchInput) {
+        if (searchVal) searchInput.value = params.get("search");
+        searchInput.oninput = function (e) {
+          searchVal = e.target.value.toLowerCase().trim();
+          currentPage = 1;
+          const url = new URL(location.href);
+          if (searchVal) {
+            url.searchParams.set("search", e.target.value.trim());
+          } else {
+            url.searchParams.delete("search");
+          }
+          url.searchParams.delete("page");
+          history.replaceState({ page: 1 }, "", url);
+          render();
+        };
+      }
+
+      // Bind Sort By
       const sortOptionsContainer = document.querySelector("#select-sort .custom-options");
       const sortTriggerLabel = document.querySelector("#select-sort .custom-select-trigger [data-selected-label]");
       if (sortOptionsContainer) {
-        sortOptionsContainer.addEventListener("click", (e) => {
+        sortOptionsContainer.onclick = function (e) {
           const opt = e.target.closest(".custom-option");
           if (!opt) return;
 
           currentSort = opt.dataset.value;
-
-          // Update highlights
           sortOptionsContainer.querySelectorAll(".custom-option").forEach(o => o.classList.remove("selected"));
           opt.classList.add("selected");
-
-          // Update label text
           if (sortTriggerLabel) sortTriggerLabel.textContent = opt.textContent;
 
-          // Close dropdown
           opt.closest(".custom-select").classList.remove("open");
-
           currentPage = 1;
+          updateUrlPage(1, true);
           render();
-
-          // Collapse the drawer
-          if (filterDrawer) filterDrawer.style.display = "none";
-        });
+        };
       }
 
-      // Apply button (Done) - just closes the drawer
+      // Apply button (Done) - closes the drawer
       const applyBtn = document.getElementById("filter-apply");
       if (applyBtn) {
-        applyBtn.addEventListener("click", () => {
+        applyBtn.onclick = function () {
           if (filterDrawer) filterDrawer.style.display = "none";
-        });
+          if (toggleFilterBtn) toggleFilterBtn.classList.remove("active");
+        };
       }
 
       // Reset button
       const resetBtn = document.getElementById("filter-reset");
       if (resetBtn) {
-        resetBtn.addEventListener("click", () => {
-          // Reset visual fields for Category
-          if (catTriggerLabel) catTriggerLabel.textContent = "All Categories";
-          if (categoryOptionsContainer) {
-            categoryOptionsContainer.querySelectorAll(".custom-option").forEach(o => {
-              if (o.dataset.value === "all") o.classList.add("selected");
-              else o.classList.remove("selected");
-            });
-          }
+        resetBtn.onclick = function () {
+          selectedCategory = "all";
+          selectedSeries = "all";
+          selectedSub = "all";
+          minPrice = null;
+          maxPrice = null;
+          currentSort = "default";
+          searchVal = "";
 
-          // Reset visual fields for Sort
+          if (minPriceInput) minPriceInput.value = "";
+          if (maxPriceInput) maxPriceInput.value = "";
+          if (searchInput) searchInput.value = "";
+
           if (sortTriggerLabel) sortTriggerLabel.textContent = "Default / Featured";
           if (sortOptionsContainer) {
             sortOptionsContainer.querySelectorAll(".custom-option").forEach(o => {
@@ -822,100 +1067,128 @@
             });
           }
 
-          if (minPriceInput) minPriceInput.value = "";
-          if (maxPriceInput) maxPriceInput.value = "";
+          populateCategories();
+          populateSeries();
 
-          // Reset filter states
-          selectedCategory = "all";
-          minPrice = null;
-          maxPrice = null;
-          currentSort = "default";
-
-          // Clear instant search
-          if (searchInput) searchInput.value = "";
-          searchVal = "";
-
-          // Clear URL parameters
           const url = new URL(location);
           url.searchParams.delete("cat");
-          url.searchParams.delete("sub");
           url.searchParams.delete("series");
+          url.searchParams.delete("sub");
           url.searchParams.delete("search");
+          url.searchParams.delete("page");
           history.replaceState(null, "", url);
-
-          // Reset category variables
-          current = "all";
-          baseList = null;
-
-          // Update tiles
-          updateSubTiles("all");
 
           currentPage = 1;
           render();
 
-          // Collapse the drawer
           if (filterDrawer) filterDrawer.style.display = "none";
-        });
-      }
-
-      // Dynamic sub-category/series tiles updates
-      function updateSubTiles(catId) {
-        const subTilesHost = document.querySelector("[data-sub-tiles-grid]");
-        if (!subTilesHost) return;
-
-        let tilesToShow = null;
-        let tilesTitle = "";
-        let tilesBlurb = "";
-
-        if (catId !== "all") {
-          const subs = XTRAL_SUBCATS.filter(s => s.cat === catId);
-          const directSeries = XTRAL_SERIES.filter(s => s.cat === catId && !s.sub);
-          const cat = XTRAL_CATEGORIES.find(c => c.id === catId);
-          const catBlurb = (cat && cat.blurb) ? cat.blurb : "Choose a range to explore.";
-          if (subs.length || directSeries.length) {
-            tilesToShow = subs.map(s => tileCard(`products.php?cat=${catId}&sub=${s.id}`, s.img, s.name, "Explore"))
-              .concat(directSeries.map(s => tileCard(`products.php?series=${s.id}`, s.img, s.name, "Explore")));
-            tilesTitle = xtralCatName(catId);
-            tilesBlurb = catBlurb;
-          }
-        }
-
-        if (tilesToShow && tilesToShow.length) {
-          subTilesHost.innerHTML = tilesToShow.join("");
-          subTilesHost.style.display = "grid";
-          if (titleEl) titleEl.textContent = tilesTitle;
-          if (subEl) subEl.textContent = tilesBlurb;
-        } else {
-          subTilesHost.innerHTML = "";
-          subTilesHost.style.display = "none";
-        }
+          if (toggleFilterBtn) toggleFilterBtn.classList.remove("active");
+        };
       }
 
       function render() {
-        const hasTiles = subTilesHost && subTilesHost.innerHTML.trim() !== "";
-        if (toolbarEl) toolbarEl.style.display = hasTiles ? "none" : "flex";
-        if (pagHost) pagHost.style.display = hasTiles ? "none" : "flex";
-        if (grid) grid.style.display = hasTiles ? "none" : "grid";
+        if (toolbarEl) toolbarEl.style.display = "flex";
+        if (pagHost) pagHost.style.display = "flex";
+        if (grid) grid.style.display = "grid";
 
         let list = XTRAL_PRODUCTS.slice();
-        if (baseList !== null && selectedCategory === current) {
-          list = baseList.slice();
-        } else if (selectedCategory !== "all") {
-          list = XTRAL_PRODUCTS.filter(p => p.cat === selectedCategory);
+
+        // 1. Category Filter
+        if (selectedCategory !== "all") {
+          list = list.filter(p => String(p.cat) === String(selectedCategory));
+        }
+
+        // 2. Series Filter
+        if (selectedSeries !== "all") {
+          const targetSeries = XTRAL_SERIES.find(s => String(s.id) === String(selectedSeries));
+          const targetName = targetSeries ? targetSeries.name.trim().toLowerCase() : "";
+          list = list.filter(p => {
+            if (p.seriesId && String(p.seriesId) === String(selectedSeries)) return true;
+            if (targetName && p.series && p.series.trim().toLowerCase() === targetName) return true;
+            return false;
+          });
+        }
+
+        // 3. Subcategory Filter if any
+        if (selectedSub !== "all") {
+          list = list.filter(p => p.subId && String(p.subId) === String(selectedSub));
+        }
+
+        function cleanAlnum(str) {
+          return (str || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+        }
+
+        function productMatchesSearch(p, query) {
+          if (!query) return true;
+
+          const rawQuery = query.trim().toLowerCase();
+          const cleanQuery = cleanAlnum(rawQuery);
+          if (!cleanQuery) return true;
+
+          // 1. Gather all product & variant codes
+          const codes = [];
+          if (p.code && p.code !== "—") codes.push(String(p.code));
+          if (p.variants && p.variants.items) {
+            p.variants.items.forEach(v => {
+              if (v.code && v.code !== "—") codes.push(String(v.code));
+            });
+          }
+
+          const cleanCodes = codes.map(c => cleanAlnum(c)).filter(Boolean);
+
+          const codeDirectMatch = cleanCodes.some(c => c.includes(cleanQuery) || cleanQuery.includes(c)) ||
+            codes.some(c => c.toLowerCase().includes(rawQuery));
+
+          if (codeDirectMatch) return true;
+
+          // 2. Multi-token match across name, series, category, subcategory, codes and variants
+          const tokens = rawQuery.split(/[\s,]+/).filter(Boolean);
+
+          const name = (p.name || "").toLowerCase();
+          const cleanName = cleanAlnum(name);
+
+          const catName = p.cat ? xtralCatName(p.cat).toLowerCase() : "";
+          const cleanCat = cleanAlnum(catName);
+
+          const curSeriesObj = p.seriesId ? XTRAL_SERIES.find(s => s.id === p.seriesId) : null;
+          const series = curSeriesObj ? curSeriesObj.name.toLowerCase() : (p.series ? p.series.toLowerCase() : "");
+          const cleanSeries = cleanAlnum(series);
+
+          const curSubObj = p.subId ? XTRAL_SUBCATS.find(s => s.id === p.subId) : null;
+          const subName = curSubObj ? curSubObj.name.toLowerCase() : "";
+          const cleanSub = cleanAlnum(subName);
+
+          const variantNames = (p.variants && p.variants.items)
+            ? p.variants.items.map(v => (v.name || "").toLowerCase()).join(" ")
+            : "";
+
+          const allCodesStr = codes.join(" ").toLowerCase();
+          const combinedText = `${name} ${series} ${catName} ${subName} ${allCodesStr} ${variantNames}`.toLowerCase();
+          const combinedClean = cleanAlnum(combinedText);
+
+          return tokens.every(token => {
+            const cleanToken = cleanAlnum(token);
+            if (!cleanToken) return true;
+
+            return combinedText.includes(token) ||
+              cleanCodes.some(c => c.includes(cleanToken)) ||
+              cleanName.includes(cleanToken) ||
+              cleanSeries.includes(cleanToken) ||
+              cleanCat.includes(cleanToken) ||
+              cleanSub.includes(cleanToken) ||
+              combinedClean.includes(cleanToken);
+          });
         }
 
         if (searchVal) {
-          list = list.filter(p => {
-            const name = p.name ? p.name.toLowerCase() : "";
-            const code = p.code ? p.code.toLowerCase() : "";
-            const catName = p.cat ? xtralCatName(p.cat).toLowerCase() : "";
-            const series = p.series ? p.series.toLowerCase() : "";
-
-            return name.includes(searchVal) ||
-              code.includes(searchVal) ||
-              catName.includes(searchVal) ||
-              series.includes(searchVal);
-          });
+          let filtered = list.filter(p => productMatchesSearch(p, searchVal));
+          if (filtered.length === 0 && list.length < XTRAL_PRODUCTS.length) {
+            const allMatches = XTRAL_PRODUCTS.filter(p => productMatchesSearch(p, searchVal));
+            if (allMatches.length > 0) {
+              filtered = allMatches;
+            }
+          }
+          list = filtered;
         }
 
         if (minPrice !== null || maxPrice !== null) {
@@ -946,6 +1219,15 @@
             if (bNew !== aNew) return bNew - aNew;
             return Number(b.id) - Number(a.id);
           });
+        } else {
+          // Default sorting:
+          // In a series: sort by custom display_order set for that series
+          // On main product section (all products / no series): sort by primary database ID (id ASC)
+          if (selectedSeries !== "all") {
+            list.sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0) || Number(a.id) - Number(b.id));
+          } else {
+            list.sort((a, b) => Number(a.id) - Number(b.id));
+          }
         }
 
         // Update match counter
@@ -960,24 +1242,42 @@
           }
         }
 
-        if (baseList !== null && selectedCategory === current) {
-          if (titleEl) titleEl.textContent = baseTitle;
-          if (subEl) subEl.textContent = baseBlurb;
-        } else {
-          if (selectedCategory !== "all") {
-            if (titleEl) titleEl.textContent = xtralCatName(selectedCategory);
-            if (subEl) {
-              const c = XTRAL_CATEGORIES.find(c => c.id === selectedCategory);
-              subEl.textContent = (c && c.blurb) ? c.blurb : "Browse the complete range.";
-            }
-          } else {
-            if (titleEl) titleEl.textContent = "All Products";
-            if (subEl) subEl.textContent = "Browse the complete X-Tral range across every category.";
+        // Dynamic banner titles and breadcrumbs
+        if (selectedSeries !== "all") {
+          const curSeries = XTRAL_SERIES.find(s => String(s.id) === String(selectedSeries));
+          const curCat = XTRAL_CATEGORIES.find(c => String(c.id) === String(curSeries ? curSeries.cat : selectedCategory));
+          const catName = curCat ? curCat.name : "Category";
+          const sName = curSeries ? curSeries.name : "Series";
+          if (titleEl) titleEl.textContent = sName;
+          if (subEl) subEl.textContent = (curSeries && curSeries.blurb) ? curSeries.blurb : (curCat && curCat.blurb ? curCat.blurb : `All products in the ${sName} series.`);
+          if (eyebrowEl) {
+            eyebrowEl.innerHTML = `<a href="collections" style="color:inherit;text-decoration:none;">Our Collection</a> <span style="opacity:0.6;">/</span> <a href="products?cat=${curCat ? curCat.id : ''}" style="color:inherit;text-decoration:none;">${catName}</a> <span style="opacity:0.6;">/</span> <span>${sName}</span>`;
           }
+        } else if (selectedCategory !== "all") {
+          const curCat = XTRAL_CATEGORIES.find(c => String(c.id) === String(selectedCategory));
+          const catName = curCat ? curCat.name : "Category";
+          if (titleEl) titleEl.textContent = catName;
+          if (subEl) subEl.textContent = (curCat && curCat.blurb) ? curCat.blurb : "Browse the complete range.";
+          if (eyebrowEl) {
+            eyebrowEl.innerHTML = `<a href="collections" style="color:inherit;text-decoration:none;">Our Collection</a> <span style="opacity:0.6;">/</span> <span>${catName}</span>`;
+          }
+        } else {
+          if (titleEl) titleEl.textContent = "Our Products";
+          if (subEl) subEl.textContent = "Browse the complete X-Tral range across every category.";
+          if (eyebrowEl) eyebrowEl.textContent = "Our Products";
         }
 
         const totalPages = Math.ceil(list.length / itemsPerPage);
-        if (currentPage > totalPages) currentPage = totalPages || 1;
+        if (totalPages > 0 && currentPage > totalPages) {
+          currentPage = totalPages;
+          updateUrlPage(currentPage, true);
+        } else if (currentPage < 1) {
+          currentPage = 1;
+          updateUrlPage(currentPage, true);
+        } else if (params.has("page") && (isNaN(pageParam) || pageParam <= 0) && !isLastPageRequested) {
+          currentPage = 1;
+          updateUrlPage(currentPage, true);
+        }
 
         // Slice list for the current page
         const start = (currentPage - 1) * itemsPerPage;
@@ -993,13 +1293,10 @@
             pagHost.innerHTML = "";
           } else {
             let html = "";
-
-            // Prev button
             html += `<button class="pagination-btn${currentPage === 1 ? ' disabled' : ''}" data-page="${currentPage - 1}">&lt;</button>`;
 
-            // Pages range
             const range = [];
-            const delta = 1; // number of pages to show around current page
+            const delta = 1;
             for (let i = 1; i <= totalPages; i++) {
               if (i === 1 || i === totalPages || (i >= currentPage - delta && i <= currentPage + delta)) {
                 range.push(i);
@@ -1016,26 +1313,53 @@
               }
             });
 
-            // Next button
             html += `<button class="pagination-btn${currentPage === totalPages ? ' disabled' : ''}" data-page="${currentPage + 1}">&gt;</button>`;
-
             pagHost.innerHTML = html;
           }
         }
       }
 
       if (pagHost) {
-        pagHost.addEventListener("click", (e) => {
+        pagHost.onclick = function (e) {
           const btn = e.target.closest(".pagination-btn");
           if (!btn || btn.classList.contains("disabled")) return;
-          currentPage = parseInt(btn.dataset.page, 10);
+          const targetPage = parseInt(btn.dataset.page, 10);
+          if (isNaN(targetPage) || targetPage === currentPage) return;
+          currentPage = targetPage;
+          updateUrlPage(currentPage, false);
           render();
 
-          // Smooth scroll to top of product grid
           const scrollTarget = document.querySelector(".toolbar") || grid;
           if (scrollTarget) {
             scrollTarget.scrollIntoView({ behavior: "smooth", block: "start" });
           }
+        };
+      }
+
+      if (!window.__xtralPopstateBound) {
+        window.__xtralPopstateBound = true;
+        window.addEventListener("popstate", () => {
+          const popParams = new URLSearchParams(location.search);
+          const rawP = (popParams.get("page") || "").toLowerCase().trim();
+          const p = parseInt(rawP, 10);
+          currentPage = (rawP === "last" || rawP === "end") ? Infinity : ((!isNaN(p) && p > 0) ? p : 1);
+
+          const s = popParams.get("search") || "";
+          if (searchInput && searchInput.value !== s) {
+            searchInput.value = s;
+            searchVal = s.toLowerCase().trim();
+          }
+
+          const c = popParams.get("cat");
+          const ser = popParams.get("series");
+          const seriesMatch = ser ? XTRAL_SERIES.find(x => String(x.id) === String(ser)) : null;
+
+          selectedCategory = c || (seriesMatch ? String(seriesMatch.cat) : "all");
+          selectedSeries = ser || "all";
+
+          populateCategories();
+          populateSeries();
+          render();
         });
       }
 
@@ -1045,40 +1369,100 @@
     /* ---- Product detail page ---- */
     const pdHost = document.querySelector("[data-product-detail]");
     if (pdHost && XTRAL_PRODUCTS.length) {
-      // URLs use the dash form of the code (e.g. "TDS-60"); normalize both
-      // sides the same way so old space-form links (bookmarked/QR-printed
-      // before this change) still resolve correctly.
-      const id = dashCode((new URLSearchParams(location.search).get("id") || "").trim()).toLowerCase();
-      const p = XTRAL_PRODUCTS.find(x => {
-        const prodId = String(x.id).trim().toLowerCase();
-        const prodCode = x.code && x.code !== '—' ? dashCode(String(x.code).trim()).toLowerCase() : "";
-        if (prodId === id || (prodCode && prodCode === id)) return true;
-        if (x.variants && x.variants.items && x.variants.items.length > 0) {
-          return x.variants.items.some(v => v.code && dashCode(String(v.code).trim()).toLowerCase() === id);
+      // New URL format: /products/{id}-{code}  e.g. /products/45-WB123016
+      // Legacy format still supported: /products/{code}  e.g. /products/WB123016
+      let rawId = new URLSearchParams(location.search).get("id");
+      if (!rawId) {
+        const pathMatch = location.pathname.match(/(?:products|product)\/([^/?#]+)/i);
+        if (pathMatch) {
+          rawId = decodeURIComponent(pathMatch[1]);
         }
-        return false;
-      }) || XTRAL_PRODUCTS[0];
+      }
+      const rawTrim = (rawId || "").trim();
+      const id = dashCode(rawTrim).toLowerCase();
+      const cleanId = rawTrim.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
 
-      document.title = p.name + " — X-Tral";
+      // Check if URL starts with a numeric ID (new format: "45-WB123016" or just "45")
+      const numericPrefixMatch = rawTrim.match(/^(\d+)(?:-.*)?$/);
+      let p;
+      if (numericPrefixMatch) {
+        // New format: find by DB id first — always unique
+        const numericId = numericPrefixMatch[1];
+        p = XTRAL_PRODUCTS.find(x => String(x.id) === numericId);
+      }
+      if (!p) {
+        // Legacy fallback: match by product code or variant code
+        p = XTRAL_PRODUCTS.find(x => {
+          const prodId = String(x.id).trim().toLowerCase();
+          const prodCode = x.code && x.code !== '—' ? dashCode(String(x.code).trim()).toLowerCase() : "";
+          const cleanProdCode = x.code && x.code !== '—' ? String(x.code).replace(/[^a-zA-Z0-9]/g, '').toLowerCase() : "";
+          if (prodId === id || (prodCode && prodCode === id) || (cleanId && cleanProdCode === cleanId)) return true;
+          if (x.variants && x.variants.items && x.variants.items.length > 0) {
+            return x.variants.items.some(v => {
+              if (!v.code) return false;
+              const vCode = dashCode(String(v.code).trim()).toLowerCase();
+              const cleanVCode = String(v.code).replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+              return vCode === id || (cleanId && cleanVCode === cleanId);
+            });
+          }
+          return false;
+        });
+      }
+      p = p || XTRAL_PRODUCTS[0];
+      if (window.XTRAL_CURRENT_PROD) {
+        if (!p) p = {};
+        if (window.XTRAL_CURRENT_PROD.price_label_1 && (!p.price_label_1 || window.XTRAL_CURRENT_PROD.price_label_1 !== 'Zone 1')) {
+          p.price_label_1 = window.XTRAL_CURRENT_PROD.price_label_1;
+        }
+        if (window.XTRAL_CURRENT_PROD.price_label_2 && (!p.price_label_2 || window.XTRAL_CURRENT_PROD.price_label_2 !== 'Zone 2')) {
+          p.price_label_2 = window.XTRAL_CURRENT_PROD.price_label_2;
+        }
+      }
+
+      document.title = (p.name || "Product") + " — X-Tral";
       // Fill EVERY matching element (name appears in both breadcrumb and title)
       const set = (sel, val) => { document.querySelectorAll(sel).forEach(el => { el.innerHTML = val; }); };
-      // Rewrite the address bar to the dash form so old %20-encoded links
-      // (bookmarked/QR-printed before this change) self-correct on load,
-      // not just when a variant is switched.
-      const syncUrlId = (rawId) => {
-        if (!rawId) return;
-        const url = new URL(location);
-        url.searchParams.set("id", dashCode(String(rawId).trim()));
-        history.replaceState(null, "", url);
+      // Keep address bar in new {id}-{code} form (e.g. products/45-WB123016)
+      const syncUrlId = (newRawId) => {
+        if (!p) return;
+        const code = newRawId && String(newRawId).trim() !== '' ? mergeCode(String(newRawId).trim()) : '';
+        const slug = code ? `${p.id}-${code}` : p.id;
+        const currentPath = location.pathname;
+        if (/(?:products|product)\//i.test(currentPath)) {
+          const newPath = currentPath.replace(/(?:products|product)\/[^/?#]+/i, `products/${encodeURIComponent(slug)}`);
+          history.replaceState(null, "", newPath);
+        } else {
+          history.replaceState(null, "", `products/${encodeURIComponent(slug)}`);
+        }
       };
 
       set("[data-pd-cat]", xtralCatName(p.cat));
+      const representationNotice = document.querySelector("[data-pd-representation-notice]");
+      if (representationNotice) {
+        const rangeName = `${p.series || ''} ${XTRAL_SERIES.find(s => s.id === p.seriesId)?.name || ''} ${xtralCatName(p.cat)}`;
+        representationNotice.hidden = !/\b(?:vanitys|vanities|vanity|(?:quardz|quartz)\s+sinks?)\b/i.test(rangeName);
+      }
       set("[data-pd-name]", p.name);
       set("[data-pd-code]", "Model " + dashCode(p.code));
-      if (!p.variants || !p.variants.items || p.variants.items.length === 0) {
-        syncUrlId(p.code && p.code !== '—' ? p.code : p.id);
+
+      const pdCrumb = document.querySelector("[data-pd-crumb]");
+      if (pdCrumb && pdCrumb.parentElement) {
+        const catName = xtralCatName(p.cat);
+        const seriesObj = XTRAL_SERIES.find(s => s.id === p.seriesId);
+        if (seriesObj) {
+          pdCrumb.parentElement.innerHTML = `
+            <a href="index">Home</a><span class="sep">/</span>
+            <a href="products">Collections</a><span class="sep">/</span>
+            <a href="products?cat=${p.cat}">${catName}</a><span class="sep">/</span>
+            <a href="products?cat=${p.cat}&series=${seriesObj.id}">${seriesObj.name}</a><span class="sep">/</span>
+            <span data-pd-name>${p.name}</span>
+          `;
+        } else {
+          pdCrumb.textContent = catName;
+          pdCrumb.href = `products?cat=${p.cat}`;
+        }
       }
-      set("[data-pd-price]", p.price ? `${money(p.price)} <small>M.R.P. (incl. of all taxes)</small>` : "On request");
+      set("[data-pd-price]", renderPriceHtml(p.price, p.price_zone2, true, p.price_label_1, p.price_label_2));
 
       const updateDimensions = (dimensionsVal) => {
         const dimEl = document.querySelector("[data-pd-dimensions]");
@@ -1095,13 +1479,15 @@
       // Get dimensions with fallback to parsing specs
       let productDimensions = p.dimensions;
       if (!productDimensions || productDimensions.trim() === "" || productDimensions.trim() === "—") {
-        const len = p.specs.find(s => s[0] && s[0].toLowerCase().includes("length"))?.[1];
-        const wid = p.specs.find(s => s[0] && s[0].toLowerCase().includes("width"))?.[1];
-        const hei = p.specs.find(s => s[0] && s[0].toLowerCase().includes("height"))?.[1];
-        if (len && wid && hei) {
-          productDimensions = `${len} x ${wid} x ${hei}`;
-        } else if (len && wid) {
-          productDimensions = `${len} x ${wid}`;
+        if (Array.isArray(p.specs)) {
+          const len = p.specs.find(s => s && s[0] && s[0].toLowerCase().includes("length"))?.[1];
+          const wid = p.specs.find(s => s && s[0] && s[0].toLowerCase().includes("width"))?.[1];
+          const hei = p.specs.find(s => s && s[0] && s[0].toLowerCase().includes("height"))?.[1];
+          if (len && wid && hei) {
+            productDimensions = `${len} x ${wid} x ${hei}`;
+          } else if (len && wid) {
+            productDimensions = `${len} x ${wid}`;
+          }
         }
       }
       updateDimensions(productDimensions);
@@ -1119,23 +1505,27 @@
           requestAnimationFrame(() => {
             if (descToggle) descToggle.hidden = descEl.scrollHeight <= descEl.clientHeight + 2;
           });
-          const toggleDesc = () => {
+          const toggleDesc = (e) => {
+            if (e) {
+              e.preventDefault();
+              e.stopPropagation();
+            }
             const expanded = descEl.classList.toggle("expanded");
             if (descToggle) descToggle.textContent = expanded ? "Read less" : "Read more";
           };
-          if (descToggle) descToggle.addEventListener("click", toggleDesc);
+          if (descToggle) descToggle.onclick = toggleDesc;
           // Clicking the clamped text (the "…") also opens the full description
-          descEl.addEventListener("click", () => {
+          descEl.onclick = () => {
             if (!descEl.classList.contains("expanded")) toggleDesc();
-          });
+          };
         } else {
           descBlock.hidden = true;
         }
       }
       set("[data-pd-dimensions-val]", p.dimensions || "—");
       set("[data-pd-hsn-val]", p.hsn || "—");
-      const img = document.querySelector("[data-pd-img]");
-      if (img) { img.src = p.img; img.alt = p.name; img.style.visibility = "visible"; }
+      let updateMediaGallery;
+      let initialSelectedVariantImg = null;
 
       /* ---- Product variants ---- */
       const varHost = document.querySelector("[data-pd-variants]");
@@ -1143,22 +1533,32 @@
         if (p.variants && p.variants.items && p.variants.items.length > 0) {
           const v = p.variants;
           let initialIdx = 0;
-          if (id) {
-            const matchIdx = v.items.findIndex(item => item.code && dashCode(String(item.code).trim()).toLowerCase() === id);
+          if (id || cleanId) {
+            const matchIdx = v.items.findIndex(item => {
+              if (!item.code) return false;
+              const ic = String(item.code).trim().toLowerCase();
+              const icClean = ic.replace(/[^a-zA-Z0-9]/g, '');
+              return dashCode(ic) === id || (cleanId && icClean === cleanId);
+            });
             if (matchIdx >= 0) initialIdx = matchIdx;
           }
 
           let optionsHTML = "";
 
           if (v.type === "color") {
-            optionsHTML = v.items.map((item, idx) => `
+            optionsHTML = v.items.map((item, idx) => {
+              const swatchStyle = item.textureImg
+                ? `background-image: url('${item.textureImg}'); background-size: cover; background-position: center;`
+                : `background-color: ${item.val};`;
+              return `
               <button class="color-swatch${idx === initialIdx ? ' active' : ''}"
                       title="${item.name}"
                       data-index="${idx}"
-                      style="background-color: ${item.val};"
+                      style="${swatchStyle}"
                       aria-label="${item.name}">
               </button>
-            `).join("");
+            `;
+            }).join("");
           } else if (v.type === "size") {
             optionsHTML = v.items.map((item, idx) => `
               <button class="size-pill${idx === initialIdx ? ' active' : ''}"
@@ -1177,41 +1577,114 @@
             </div>
           `;
 
+          const updateColorSizes = (item) => {
+            let sizeGroup = varHost.querySelector(".color-sizes-group");
+            if (!item || !item.sizes || item.sizes.length === 0) {
+              if (sizeGroup) sizeGroup.remove();
+              updateDimensions(productDimensions);
+              return;
+            }
+
+            // A single size is already shown in the "Dimensions:" line — no picker needed
+            if (item.sizes.length === 1) {
+              if (sizeGroup) sizeGroup.remove();
+              const sz = item.sizes[0];
+              const p1 = (sz.price !== null && sz.price !== undefined && sz.price !== '') ? sz.price : item.price;
+              const p2 = (sz.price_zone2 !== null && sz.price_zone2 !== undefined && sz.price_zone2 !== '') ? sz.price_zone2 : item.price_zone2;
+              set("[data-pd-price]", renderPriceHtml(p1, p2, true, item.price_label_1 || p.price_label_1, item.price_label_2 || p.price_label_2));
+              updateDimensions(sz.dimension || productDimensions);
+              return;
+            }
+
+            if (!sizeGroup) {
+              sizeGroup = document.createElement("div");
+              sizeGroup.className = "variant-group color-sizes-group";
+              sizeGroup.style.marginTop = "14px";
+              varHost.appendChild(sizeGroup);
+            }
+
+            sizeGroup.innerHTML = `
+              <span class="variant-label">Size / Dimension</span>
+              <div class="variant-options">
+                ${item.sizes.map((sz, sIdx) => `
+                  <button type="button" class="size-pill color-size-pill${sIdx === 0 ? ' active' : ''}" data-size-idx="${sIdx}">
+                    ${sz.dimension}
+                  </button>
+                `).join("")}
+              </div>
+            `;
+
+            const applySize = (sz) => {
+              const p1 = (sz.price !== null && sz.price !== undefined && sz.price !== '') ? sz.price : item.price;
+              const p2 = (sz.price_zone2 !== null && sz.price_zone2 !== undefined && sz.price_zone2 !== '') ? sz.price_zone2 : item.price_zone2;
+              set("[data-pd-price]", renderPriceHtml(p1, p2, true, item.price_label_1 || p.price_label_1, item.price_label_2 || p.price_label_2));
+              if (sz.dimension) {
+                updateDimensions(sz.dimension);
+              }
+            };
+
+            applySize(item.sizes[0]);
+
+            sizeGroup.onclick = (e) => {
+              const sBtn = e.target.closest(".color-size-pill");
+              if (!sBtn) return;
+              sizeGroup.querySelectorAll(".color-size-pill").forEach(el => el.classList.remove("active"));
+              sBtn.classList.add("active");
+              const sIdx = parseInt(sBtn.dataset.sizeIdx, 10);
+              if (item.sizes[sIdx]) {
+                applySize(item.sizes[sIdx]);
+              }
+            };
+          };
+
           // Initialize with matching variant
           const applyVariant = (item) => {
             set("[data-pd-code]", "Model " + dashCode(item.code));
-            set("[data-pd-price]", item.price ? `${money(item.price)} <small>M.R.P. (incl. of all taxes)</small>` : "On request");
-            if (item.img && img) { img.src = item.img; img.style.visibility = "visible"; }
-            
+            set("[data-pd-price]", renderPriceHtml(item.price, item.price_zone2, true, item.price_label_1 || p.price_label_1, item.price_label_2 || p.price_label_2));
+
+            // Update main image and gallery for the variant (or fallback to primary)
+            if (typeof updateMediaGallery === 'function') {
+              updateMediaGallery(item ? item.img : null);
+            }
+
             // If it's a size variant, update dimensions display with variant's size
-            if (v.type === "size" && item.name) {
+            if (v.type === "size" && item && item.name) {
               updateDimensions(item.name);
+            } else if (v.type === "color") {
+              updateColorSizes(item);
             }
           };
-          applyVariant(v.items[initialIdx]);
-          syncUrlId(v.items[initialIdx].code);
+
+          if (v.items[initialIdx]) {
+            initialSelectedVariantImg = v.items[initialIdx].img || null;
+            applyVariant(v.items[initialIdx]);
+            syncUrlId(v.items[initialIdx].code || p.code);
+          } else if (p.code && p.code !== '—') {
+            syncUrlId(p.code);
+          }
 
           // Handle variant selection click
-          varHost.addEventListener("click", (e) => {
+          varHost.onclick = (e) => {
+            if (e.target.closest(".color-sizes-group")) return;
             const btn = e.target.closest(".color-swatch, .size-pill");
             if (!btn) return;
-            varHost.querySelectorAll(".color-swatch, .size-pill").forEach(el => el.classList.remove("active"));
+            varHost.querySelectorAll(".color-swatch, .size-pill:not(.color-size-pill)").forEach(el => el.classList.remove("active"));
             btn.classList.add("active");
             const idx = parseInt(btn.dataset.index, 10);
             if (v.items[idx]) {
               applyVariant(v.items[idx]);
               syncUrlId(v.items[idx].code);
             }
-          });
+          };
         } else {
           varHost.innerHTML = ""; // Clear if no variants
         }
       }
 
       const crumbCat = document.querySelector("[data-pd-crumb]");
-      if (crumbCat) { crumbCat.textContent = xtralCatName(p.cat); crumbCat.href = "products.php?cat=" + p.cat; }
+      if (crumbCat) { crumbCat.textContent = xtralCatName(p.cat); crumbCat.href = "products?cat=" + p.cat; }
 
-      set("[data-pd-specs]", p.specs.map(s => `<tr><th>${s[0]}</th><td>${s[1]}</td></tr>`).join(""));
+      set("[data-pd-specs]", (Array.isArray(p.specs) ? p.specs : []).map(s => `<tr><th>${s[0]}</th><td>${s[1]}</td></tr>`).join(""));
 
       // Render features with custom icons
       const featuresHost = document.querySelector("[data-pd-features]");
@@ -1242,31 +1715,23 @@
         }
       }
 
-      /* ---- Thumbnails & Lightbox Popup (like Amazon) ---- */
+      /* ---- Media Gallery & Lightbox Popup (Zoom View) ---- */
       const thumbsHost = document.querySelector("[data-pd-thumbs]");
       const mainImgEl = document.querySelector("[data-pd-img]");
       const videoContainer = document.querySelector("[data-pd-video-container]");
       const mediaContainer = document.querySelector("[data-pd-media-container]");
+      const thumbsWrapper = document.querySelector(".pd-thumbs-wrapper");
+
+      const prevMediaBtn = mediaContainer ? mediaContainer.querySelector(".pd-media-arrow--prev") : null;
+      const nextMediaBtn = mediaContainer ? mediaContainer.querySelector(".pd-media-arrow--next") : null;
+      const prevThumbArrow = thumbsWrapper ? thumbsWrapper.querySelector(".pd-thumbs-arrow--prev") : null;
+      const nextThumbArrow = thumbsWrapper ? thumbsWrapper.querySelector(".pd-thumbs-arrow--next") : null;
 
       const mediaList = [];
       const productImages = p.imgs && p.imgs.length > 0 ? p.imgs : [p.img];
-
-      // 1. Push primary image (first image)
-      if (productImages.length > 0 && productImages[0]) {
-        mediaList.push({ type: 'image', url: productImages[0], index: mediaList.length });
-      }
-
-      // 2. Push video (if present)
-      if (p.video) {
-        mediaList.push({ type: 'video', url: p.video, index: mediaList.length });
-      }
-
-      // 3. Push remaining gallery images
-      for (let i = 1; i < productImages.length; i++) {
-        if (productImages[i]) {
-          mediaList.push({ type: 'image', url: productImages[i], index: mediaList.length });
-        }
-      }
+      const defaultPrimaryImg = (productImages.length > 0 && productImages[0]) ? productImages[0] : (p.img || '');
+      const baseGalleryImgs = productImages.length > 1 ? productImages.slice(1) : [];
+      let currentMainIdx = 0;
 
       const getYouTubeEmbedUrl = (url) => {
         if (!url) return null;
@@ -1293,29 +1758,27 @@
       const getVideoHtml = (url, isLightbox = false) => {
         const ytUrl = getYouTubeEmbedUrl(url);
         if (ytUrl) {
-          const embedUrl = isLightbox
-            ? ytUrl.replace('&mute=1', '').replace('?autoplay=1', '?autoplay=1')
-            : ytUrl;
+          const embedUrl = ytUrl.includes('?') 
+            ? `${ytUrl}&mute=1` 
+            : `${ytUrl}?autoplay=1&mute=1&loop=1`;
           return `<iframe src="${embedUrl}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen style="width:100%; height:100%; display:block;"></iframe>`;
         }
 
         const vimeoUrl = getVimeoEmbedUrl(url);
         if (vimeoUrl) {
-          const embedUrl = isLightbox
-            ? vimeoUrl.replace('&muted=1', '')
-            : vimeoUrl;
+          const embedUrl = vimeoUrl.includes('?') 
+            ? `${vimeoUrl}&muted=1` 
+            : `${vimeoUrl}?autoplay=1&muted=1&loop=1`;
           return `<iframe src="${embedUrl}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen style="width:100%; height:100%; display:block;"></iframe>`;
         }
 
         if (isLightbox) {
-          return `<video src="${url}" controls autoplay class="rounded bg-black"></video>`;
+          return `<video src="${url}" controls autoplay muted playsinline class="rounded bg-black"></video>`;
         } else {
           return `<video src="${url}" autoplay muted loop playsinline></video>`;
         }
       };
 
-      // Helper to show main media (image or video preview)
-      let currentMainIdx = 0;
       const showMedia = (mediaItem) => {
         if (!mediaItem) return;
         currentMainIdx = mediaItem.index;
@@ -1342,40 +1805,171 @@
                 ${videoContentHtml}
                 ${!isIframe ? `
                   <div class="pd-media-video-play-overlay">
-                    <svg width="24" height="24" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
                   </div>
+                  <button type="button" class="pd-media-video-lightbox-btn" title="View Fullscreen" aria-label="Fullscreen">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <polyline points="15 3 21 3 21 9"></polyline>
+                      <polyline points="9 21 3 21 3 15"></polyline>
+                      <line x1="21" y1="3" x2="14" y2="10"></line>
+                      <line x1="3" y1="21" x2="10" y2="14"></line>
+                    </svg>
+                  </button>
                 ` : ''}
                 <div class="pd-media-video-click-overlay" style="position: absolute; top:0; left:0; width:100%; height:100%; cursor:pointer; background:transparent; z-index:2;"></div>
               </div>
             `;
 
-            videoContainer.querySelector(".pd-media-video-click-overlay").addEventListener("click", (e) => {
-              e.stopPropagation();
-              openLightbox(mediaItem.index);
-            });
+            const clickOverlay = videoContainer.querySelector(".pd-media-video-click-overlay");
+            const playOverlay = videoContainer.querySelector(".pd-media-video-play-overlay");
+            const videoEl = videoContainer.querySelector("video");
+            const lbBtn = videoContainer.querySelector(".pd-media-video-lightbox-btn");
+
+            if (lbBtn) {
+              lbBtn.addEventListener("click", (e) => {
+                e.stopPropagation();
+                openLightbox(mediaItem.index);
+              });
+            }
+
+            if (videoEl && playOverlay) {
+              let hideTimer = null;
+
+              // Strictly enforce mute and zero volume so no audio can play
+              videoEl.muted = true;
+              videoEl.volume = 0;
+              videoEl.addEventListener("volumechange", () => {
+                if (!videoEl.muted || videoEl.volume > 0) {
+                  videoEl.muted = true;
+                  videoEl.volume = 0;
+                }
+              });
+
+              const setIcon = (isPlaying) => {
+                if (isPlaying) {
+                  playOverlay.innerHTML = `<svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>`;
+                } else {
+                  playOverlay.innerHTML = `<svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor" style="margin-left:3px;"><path d="M8 5v14l11-7z"/></svg>`;
+                }
+              };
+
+              const hideOverlay = (delay = 1200) => {
+                if (hideTimer) clearTimeout(hideTimer);
+                hideTimer = setTimeout(() => {
+                  if (videoEl && !videoEl.paused) {
+                    playOverlay.classList.add("is-hidden");
+                  }
+                }, delay);
+              };
+
+              const showOverlay = () => {
+                if (hideTimer) clearTimeout(hideTimer);
+                playOverlay.classList.remove("is-hidden");
+              };
+
+              // When video starts playing, fade out within 1-2 seconds
+              videoEl.addEventListener("play", () => {
+                videoEl.muted = true;
+                videoEl.volume = 0;
+                setIcon(true);
+                hideOverlay(1200);
+              });
+
+              // When paused, show play button and keep visible
+              videoEl.addEventListener("pause", () => {
+                setIcon(false);
+                showOverlay();
+              });
+
+              // Check current playing state on initialization
+              if (!videoEl.paused) {
+                setIcon(true);
+                hideOverlay(1200);
+              } else {
+                setIcon(false);
+                showOverlay();
+              }
+
+              // Click to toggle play / pause
+              if (clickOverlay) {
+                clickOverlay.addEventListener("click", (e) => {
+                  e.stopPropagation();
+                  if (videoEl.paused) {
+                    videoEl.muted = true;
+                    videoEl.volume = 0;
+                    videoEl.play().catch(() => {});
+                    setIcon(true);
+                    hideOverlay(1200);
+                  } else {
+                    videoEl.pause();
+                    setIcon(false);
+                    showOverlay();
+                  }
+                });
+
+                // Mouse movement over video briefly shows controls, then hides after 1.5s
+                clickOverlay.addEventListener("mousemove", () => {
+                  if (!videoEl.paused) {
+                    showOverlay();
+                    hideOverlay(1500);
+                  }
+                });
+
+                clickOverlay.addEventListener("mouseleave", () => {
+                  if (!videoEl.paused) {
+                    hideOverlay(300);
+                  }
+                });
+              }
+            } else if (clickOverlay) {
+              clickOverlay.addEventListener("click", (e) => {
+                e.stopPropagation();
+                openLightbox(mediaItem.index);
+              });
+            }
           }
           if (mediaContainer) mediaContainer.style.cursor = "pointer";
         } else {
-          if (videoContainer) videoContainer.style.display = "none";
+          if (videoContainer) {
+            videoContainer.innerHTML = "";
+            videoContainer.style.display = "none";
+          }
           if (mainImgEl) {
             mainImgEl.style.display = "block";
             mainImgEl.src = mediaItem.url;
+            mainImgEl.alt = p.name;
           }
           if (mediaContainer) mediaContainer.style.cursor = "zoom-in";
         }
       };
 
-      // 1. Render thumbnails if there are multiple items
-      if (thumbsHost) {
-        if (mediaList.length > 1) {
-          const initialIdx = mediaList.findIndex(item => item.type === 'video') !== -1
-            ? mediaList.findIndex(item => item.type === 'video')
-            : 0;
+      const updateThumbArrows = () => {
+        if (!thumbsWrapper || !thumbsHost) return;
+        const scrollLeft = thumbsHost.scrollLeft;
+        const maxScroll = thumbsHost.scrollWidth - thumbsHost.clientWidth;
+        if (prevThumbArrow) {
+          prevThumbArrow.style.display = scrollLeft > 5 ? "flex" : "none";
+        }
+        if (nextThumbArrow) {
+          nextThumbArrow.style.display = scrollLeft < maxScroll - 5 ? "flex" : "none";
+        }
+      };
 
+      const updateMediaArrows = () => {
+        if (prevMediaBtn && nextMediaBtn) {
+          const show = mediaList.length > 1 ? "flex" : "none";
+          prevMediaBtn.style.display = show;
+          nextMediaBtn.style.display = show;
+        }
+      };
+
+      const renderThumbs = () => {
+        if (!thumbsHost) return;
+        if (mediaList.length > 1) {
           thumbsHost.innerHTML = mediaList.map((item, idx) => {
-            const isActive = idx === initialIdx ? ' active' : '';
+            const isActive = idx === currentMainIdx ? ' active' : '';
             if (item.type === 'video') {
-              const videoThumbImg = p.img || (productImages && productImages[0]) || '';
+              const videoThumbImg = defaultPrimaryImg || '';
               return `
                 <div class="pd-thumb pd-thumb-video${isActive}" data-index="${idx}">
                   ${videoThumbImg ? `<img src="${videoThumbImg}" alt="${p.name} video thumbnail" style="opacity: 0.85;">` : `
@@ -1393,32 +1987,53 @@
               `;
             }
           }).join("");
-
-          thumbsHost.addEventListener("click", (e) => {
-            const thumb = e.target.closest(".pd-thumb");
-            if (!thumb) return;
-            const idx = parseInt(thumb.dataset.index, 10);
-            showMedia(mediaList[idx]);
-          });
+          if (thumbsWrapper) thumbsWrapper.style.display = "";
         } else {
-          thumbsHost.innerHTML = ""; // Hide/clear if single item
+          thumbsHost.innerHTML = "";
+          if (thumbsWrapper) thumbsWrapper.style.display = "none";
         }
-      }
+        updateThumbArrows();
+      };
 
-      // Initialize with video first if present, otherwise first item
-      if (mediaList.length > 0) {
-        const videoItem = mediaList.find(item => item.type === 'video');
-        if (videoItem) {
-          showMedia(videoItem);
-        } else {
+      updateMediaGallery = (variantImg = null) => {
+        // If variant image is present, set it as main image; otherwise fallback to primary image
+        const activeImg = (variantImg && String(variantImg).trim() !== '') ? String(variantImg).trim() : defaultPrimaryImg;
+
+        mediaList.length = 0;
+
+        // 1. Primary slot: active variant image or base primary image
+        if (activeImg) {
+          mediaList.push({ type: 'image', url: activeImg, isVariant: !!(variantImg && String(variantImg).trim() !== '') });
+        }
+
+        // 2. Video if present
+        if (p.video) {
+          mediaList.push({ type: 'video', url: p.video });
+        }
+
+        // 3. Other base gallery images (prevent duplicates)
+        baseGalleryImgs.forEach((imgUrl) => {
+          if (imgUrl && imgUrl !== activeImg && !mediaList.some(m => m.type === 'image' && m.url === imgUrl)) {
+            mediaList.push({ type: 'image', url: imgUrl });
+          }
+        });
+
+        // Assign clean 0-based indices
+        mediaList.forEach((m, idx) => { m.index = idx; });
+
+        // Update thumbnails UI
+        renderThumbs();
+
+        // Update main arrows
+        updateMediaArrows();
+
+        // Display index 0 (the active variant or primary image)
+        if (mediaList.length > 0) {
           showMedia(mediaList[0]);
         }
-      }
+      };
 
-      // Main product media next/previous arrow navigation & swipe gestures
-      const prevMediaBtn = mediaContainer ? mediaContainer.querySelector(".pd-media-arrow--prev") : null;
-      const nextMediaBtn = mediaContainer ? mediaContainer.querySelector(".pd-media-arrow--next") : null;
-
+      // Navigate main image via next/prev arrows
       const navigateMainMedia = (direction) => {
         if (mediaList.length <= 1) return;
         currentMainIdx = (currentMainIdx + direction + mediaList.length) % mediaList.length;
@@ -1426,25 +2041,17 @@
       };
 
       if (prevMediaBtn && nextMediaBtn) {
-        if (mediaList.length <= 1) {
-          prevMediaBtn.style.display = "none";
-          nextMediaBtn.style.display = "none";
-        } else {
-          prevMediaBtn.style.display = "flex";
-          nextMediaBtn.style.display = "flex";
-
-          prevMediaBtn.addEventListener("click", (e) => {
-            e.stopPropagation();
-            navigateMainMedia(-1);
-          });
-          nextMediaBtn.addEventListener("click", (e) => {
-            e.stopPropagation();
-            navigateMainMedia(1);
-          });
-        }
+        prevMediaBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          navigateMainMedia(-1);
+        });
+        nextMediaBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          navigateMainMedia(1);
+        });
       }
 
-      // Mobile touch gestures for swiping images
+      // Mobile swipe gesture on main media
       if (mediaContainer) {
         let touchStartX = 0;
         let touchEndX = 0;
@@ -1455,24 +2062,44 @@
 
         mediaContainer.addEventListener("touchend", (e) => {
           touchEndX = e.changedTouches[0].screenX;
-          handleSwipe();
-        }, { passive: true });
-
-        const handleSwipe = () => {
           if (mediaList.length <= 1) return;
-          const swipeThreshold = 50; // swipe offset minimum
           const diffX = touchEndX - touchStartX;
-
-          if (diffX < -swipeThreshold) {
-            navigateMainMedia(1); // Swiped Left -> Next media
-          } else if (diffX > swipeThreshold) {
-            navigateMainMedia(-1); // Swiped Right -> Prev media
+          if (diffX < -50) {
+            navigateMainMedia(1);
+          } else if (diffX > 50) {
+            navigateMainMedia(-1);
           }
-        };
+        }, { passive: true });
       }
 
-      // 2. Lightbox modal popup implementation
-      const openLightbox = (startIndex) => {
+      // Delegate thumbnail clicks
+      if (thumbsHost) {
+        thumbsHost.addEventListener("click", (e) => {
+          const thumb = e.target.closest(".pd-thumb");
+          if (!thumb) return;
+          const idx = parseInt(thumb.dataset.index, 10);
+          if (mediaList[idx]) {
+            showMedia(mediaList[idx]);
+          }
+        });
+      }
+
+      // Thumbnail arrow controls
+      if (prevThumbArrow && nextThumbArrow && thumbsHost) {
+        prevThumbArrow.addEventListener("click", () => {
+          thumbsHost.scrollBy({ left: -120, behavior: "smooth" });
+        });
+        nextThumbArrow.addEventListener("click", () => {
+          thumbsHost.scrollBy({ left: 120, behavior: "smooth" });
+        });
+        thumbsHost.addEventListener("scroll", updateThumbArrows);
+        window.addEventListener("resize", updateThumbArrows);
+      }
+
+      // Lightbox (Big Image Popup) Implementation
+      let activeLightboxIdx = 0;
+
+      const getLightbox = () => {
         let lightbox = document.querySelector(".pd-lightbox");
         if (!lightbox) {
           lightbox = document.createElement("div");
@@ -1486,7 +2113,6 @@
           `;
           document.body.appendChild(lightbox);
 
-          // Close actions
           lightbox.querySelector(".pd-lightbox-close").addEventListener("click", () => {
             closeLightbox();
           });
@@ -1494,7 +2120,6 @@
             if (e.target === lightbox) closeLightbox();
           });
 
-          // Nav actions
           lightbox.querySelector(".pd-lightbox-nav--prev").addEventListener("click", (e) => {
             e.stopPropagation();
             navigateLightbox(-1);
@@ -1503,116 +2128,217 @@
             e.stopPropagation();
             navigateLightbox(1);
           });
+
+          document.addEventListener("keydown", (e) => {
+            if (!lightbox.classList.contains("open")) return;
+            if (e.key === "Escape") closeLightbox();
+            if (e.key === "ArrowLeft") navigateLightbox(-1);
+            if (e.key === "ArrowRight") navigateLightbox(1);
+          });
         }
-
-        let activeIdx = startIndex;
-
-        const closeLightbox = () => {
-          const activeVideo = lightbox.querySelector("video");
-          if (activeVideo) activeVideo.pause();
-          const activeIframe = lightbox.querySelector("iframe");
-          if (activeIframe) activeIframe.src = ""; // Kill audio and playback in iframe
-          lightbox.classList.remove("open");
-        };
-
-        const navigateLightbox = (direction) => {
-          activeIdx = (activeIdx + direction + mediaList.length) % mediaList.length;
-          renderLightboxContent();
-        };
-
-        const updateNavVisibility = () => {
-          const navs = lightbox.querySelectorAll(".pd-lightbox-nav");
-          navs.forEach(n => n.style.display = mediaList.length > 1 ? "grid" : "none");
-        };
-
-        const renderLightboxContent = () => {
-          const currentItem = mediaList[activeIdx];
-          const contentEl = lightbox.querySelector(".pd-lightbox-content");
-
-          // Remove previous elements
-          const oldImg = contentEl.querySelector("img");
-          const oldVid = contentEl.querySelector(".pd-lightbox-video-container");
-          if (oldImg) oldImg.remove();
-          if (oldVid) oldVid.remove();
-
-          if (currentItem.type === 'video') {
-            const videoDiv = document.createElement("div");
-            videoDiv.className = "pd-lightbox-video-container";
-            videoDiv.innerHTML = getVideoHtml(currentItem.url, true);
-            contentEl.insertBefore(videoDiv, contentEl.querySelector(".pd-lightbox-nav--next"));
-          } else {
-            const newImg = document.createElement("img");
-            newImg.src = currentItem.url;
-            newImg.alt = "Zoomed Product";
-            contentEl.insertBefore(newImg, contentEl.querySelector(".pd-lightbox-nav--next"));
-          }
-          updateNavVisibility();
-        };
-
-        renderLightboxContent();
-        lightbox.classList.add("open");
+        return lightbox;
       };
 
+      const closeLightbox = () => {
+        const lb = document.querySelector(".pd-lightbox");
+        if (!lb) return;
+        const activeVideo = lb.querySelector("video");
+        if (activeVideo) activeVideo.pause();
+        const activeIframe = lb.querySelector("iframe");
+        if (activeIframe) activeIframe.src = "";
+        lb.classList.remove("open");
+      };
+
+      const navigateLightbox = (direction) => {
+        if (!mediaList.length) return;
+        activeLightboxIdx = (activeLightboxIdx + direction + mediaList.length) % mediaList.length;
+        renderLightboxContent();
+      };
+
+      const renderLightboxContent = () => {
+        const lb = getLightbox();
+        const currentItem = mediaList[activeLightboxIdx];
+        if (!currentItem) return;
+
+        const contentEl = lb.querySelector(".pd-lightbox-content");
+        const oldImg = contentEl.querySelector("img");
+        const oldVid = contentEl.querySelector(".pd-lightbox-video-container");
+        if (oldImg) oldImg.remove();
+        if (oldVid) oldVid.remove();
+
+        if (currentItem.type === 'video') {
+          const videoDiv = document.createElement("div");
+          videoDiv.className = "pd-lightbox-video-container";
+          videoDiv.innerHTML = getVideoHtml(currentItem.url, true);
+          contentEl.insertBefore(videoDiv, contentEl.querySelector(".pd-lightbox-nav--next"));
+
+          const lbVideo = videoDiv.querySelector("video");
+          if (lbVideo) {
+            lbVideo.muted = true;
+            lbVideo.defaultMuted = true;
+            lbVideo.volume = 0;
+            lbVideo.addEventListener("volumechange", () => {
+              if (!lbVideo.muted || lbVideo.volume > 0) {
+                lbVideo.muted = true;
+                lbVideo.volume = 0;
+              }
+            });
+            lbVideo.addEventListener("play", () => {
+              lbVideo.muted = true;
+              lbVideo.volume = 0;
+            });
+            lbVideo.play().catch(() => {});
+          }
+        } else {
+          const newImg = document.createElement("img");
+          newImg.src = currentItem.url;
+          newImg.alt = "Zoomed Product";
+          contentEl.insertBefore(newImg, contentEl.querySelector(".pd-lightbox-nav--next"));
+        }
+
+        const navs = lb.querySelectorAll(".pd-lightbox-nav");
+        navs.forEach(n => n.style.display = mediaList.length > 1 ? "grid" : "none");
+      };
+
+      const openLightbox = (startIndex) => {
+        if (!mediaList.length) return;
+        activeLightboxIdx = (startIndex >= 0 && startIndex < mediaList.length) ? startIndex : 0;
+        const lb = getLightbox();
+        renderLightboxContent();
+        lb.classList.add("open");
+      };
+
+      // Clicking main image always opens Lightbox on the exact active image
       if (mainImgEl) {
         mainImgEl.addEventListener("click", () => {
-          const currentUrl = mainImgEl.src;
-          const activeIdx = mediaList.findIndex(item => item.type === 'image' && item.url === currentUrl);
-          openLightbox(activeIdx >= 0 ? activeIdx : 0);
+          openLightbox(currentMainIdx >= 0 ? currentMainIdx : 0);
         });
       }
 
-      // Thumbnail scrolling with arrows
-      const thumbsWrapper = document.querySelector(".pd-thumbs-wrapper");
-      if (thumbsWrapper) {
-        const prevArrow = thumbsWrapper.querySelector(".pd-thumbs-arrow--prev");
-        const nextArrow = thumbsWrapper.querySelector(".pd-thumbs-arrow--next");
-        const thumbsContainer = thumbsWrapper.querySelector("[data-pd-thumbs]");
-
-        const updateArrowVisibility = () => {
-          if (!thumbsContainer) return;
-          const scrollLeft = thumbsContainer.scrollLeft;
-          const maxScroll = thumbsContainer.scrollWidth - thumbsContainer.clientWidth;
-
-          if (prevArrow) {
-            prevArrow.style.display = scrollLeft > 5 ? "flex" : "none";
-          }
-          if (nextArrow) {
-            nextArrow.style.display = scrollLeft < maxScroll - 5 ? "flex" : "none";
-          }
-        };
-
-        if (prevArrow && nextArrow && thumbsContainer) {
-          prevArrow.addEventListener("click", () => {
-            thumbsContainer.scrollBy({ left: -120, behavior: "smooth" });
-          });
-          nextArrow.addEventListener("click", () => {
-            thumbsContainer.scrollBy({ left: 120, behavior: "smooth" });
-          });
-          thumbsContainer.addEventListener("scroll", updateArrowVisibility);
-
-          // Trigger initially and on resize
-          setTimeout(updateArrowVisibility, 300);
-          window.addEventListener("resize", updateArrowVisibility);
-
-          // Monitor child elements (like dynamically loaded thumbnails)
-          const observer = new MutationObserver(updateArrowVisibility);
-          observer.observe(thumbsContainer, { childList: true });
-        }
-      }
+      // Initialize media gallery with the initially selected variant image (or fallback to primary image)
+      updateMediaGallery(initialSelectedVariantImg);
 
 
 
       /* ---- Related products (Series first, then Category) ---- */
       const rel = document.querySelector("[data-pd-related]");
       if (rel) {
-        const sameSeries = XTRAL_PRODUCTS.filter(x => x.cat === p.cat && x.series === p.series && x.id !== p.id);
-        const sameCategory = XTRAL_PRODUCTS.filter(x => x.cat === p.cat && x.series !== p.series && x.id !== p.id);
+        const sameSeries = XTRAL_PRODUCTS.filter(x => 
+          x.id !== p.id && (
+            (x.seriesId && p.seriesId && x.seriesId === p.seriesId) ||
+            (x.series && p.series && x.series === p.series)
+          )
+        );
+        const sameCategory = XTRAL_PRODUCTS.filter(x => 
+          x.id !== p.id && x.cat === p.cat && !sameSeries.some(s => s.id === x.id)
+        );
+        const anyOthers = XTRAL_PRODUCTS.filter(x => 
+          x.id !== p.id && !sameSeries.some(s => s.id === x.id) && !sameCategory.some(c => c.id === x.id)
+        );
 
         const others = sameSeries
           .concat(sameCategory)
+          .concat(anyOthers)
           .slice(0, 4);
 
-        rel.innerHTML = others.map(productCard).join("");
+        rel.innerHTML = others.length
+          ? others.map(productCard).join("")
+          : '';
+      }
+
+      /* ---- Share: name, model, colour, dimensions, price + link (reads the live
+         DOM so the currently selected colour/size is what gets shared) ---- */
+      const shareBtn = document.querySelector("[data-pd-share]");
+      if (shareBtn) {
+        const textOf = (sel) => {
+          const el = document.querySelector(sel);
+          if (!el || el.style.display === "none") return "";
+          const clone = el.cloneNode(true);
+          clone.querySelectorAll("small").forEach(s => s.remove());
+          return clone.textContent.replace(/\s+/g, " ").trim();
+        };
+        const buildShareText = () => {
+          const name = textOf("h1[data-pd-name]");
+          const price = textOf("[data-pd-price]");
+          const colour = document.querySelector(".color-swatch.active")?.title || "";
+          const details = [
+            `*${name}*`,
+            textOf("[data-pd-code]"),
+            colour ? `Colour: ${colour}` : "",
+            textOf("[data-pd-dimensions]"),
+            price.includes("₹") ? `Price: ${price} (M.R.P. incl. of all taxes)` : `Price: ${price}`,
+          ].filter(Boolean);
+          return { name, text: details.join("\n") + "\n\n" + location.href };
+        };
+
+        const shareMenu = document.querySelector("[data-pd-share-menu]");
+        const shareWrap = document.querySelector("[data-pd-share-wrap]");
+        const nativeItem = shareMenu.querySelector('[data-share-action="native"]');
+        const copyLabel = shareMenu.querySelector("[data-share-copy-label]");
+        if (navigator.share) nativeItem.hidden = false;
+
+        const setMenu = (open) => {
+          shareMenu.hidden = !open;
+          shareBtn.setAttribute("aria-expanded", String(open));
+        };
+        shareBtn.onclick = () => setMenu(shareMenu.hidden);
+        document.addEventListener("click", (e) => {
+          if (!shareWrap.contains(e.target)) setMenu(false);
+        });
+        document.addEventListener("keydown", (e) => {
+          if (e.key === "Escape") setMenu(false);
+        });
+
+        const copyText = async (str) => {
+          try {
+            await navigator.clipboard.writeText(str);
+          } catch (e) {
+            // Fallback for http:// pages where the Clipboard API is unavailable
+            const ta = document.createElement("textarea");
+            ta.value = str;
+            ta.style.position = "fixed";
+            ta.style.opacity = "0";
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand("copy");
+            ta.remove();
+          }
+        };
+
+        shareMenu.onclick = async (e) => {
+          const item = e.target.closest("[data-share-action]");
+          if (!item) return;
+          const { name, text } = buildShareText();
+          const action = item.dataset.shareAction;
+
+          if (action === "whatsapp") {
+            window.open("https://wa.me/?text=" + encodeURIComponent(text), "_blank", "noopener");
+            setMenu(false);
+          } else if (action === "copy") {
+            await copyText(text);
+            copyLabel.textContent = "Copied!";
+            setTimeout(() => {
+              copyLabel.textContent = "Copy details & link";
+              setMenu(false);
+            }, 1200);
+          } else if (action === "native") {
+            setMenu(false);
+            const data = { title: name, text };
+            // Attach the photo currently on screen so it's sent as an image with the details as caption
+            const img = document.querySelector("[data-pd-img]");
+            if (img && img.src && img.style.display !== "none" && navigator.canShare) {
+              try {
+                const blob = await (await fetch(img.src)).blob();
+                const ext = (blob.type.split("/")[1] || "jpg").replace("jpeg", "jpg");
+                const file = new File([blob], `${name.replace(/[^\w-]+/g, "-")}.${ext}`, { type: blob.type });
+                if (navigator.canShare({ files: [file] })) data.files = [file];
+              } catch (err) { /* image unavailable — share text + link only */ }
+            }
+            try {
+              await navigator.share(data);
+            } catch (err) { /* user cancelled */ }
+          }
+        };
       }
 
 

@@ -10,6 +10,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $name = sanitize($_POST['name'] ?? '');
     $description = sanitize($_POST['description'] ?? '');
     $display_order = (int)($_POST['display_order'] ?? 0);
+    if ($display_order <= 0) {
+        $maxOrder = fetchOne("SELECT MAX(display_order) as max_order FROM catalogue_series");
+        $display_order = ($maxOrder['max_order'] ?? 0) + 1;
+    }
     $is_active = isset($_POST['is_active']) ? 1 : 0;
     $is_new_arrival = isset($_POST['is_new_arrival']) ? 1 : 0;
 

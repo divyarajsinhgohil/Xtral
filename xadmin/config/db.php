@@ -18,7 +18,7 @@ unset($__docRoot, $__appRoot);
 
 // Database Configuration — auto-switches between local XAMPP and the live
 // Hostinger server, so the same file works in both places without editing.
-$__isLocalDb = in_array($_SERVER['SERVER_NAME'] ?? 'localhost', ['localhost', '127.0.0.1'], true);
+$__isLocalDb = (php_sapi_name() === 'cli') || in_array($_SERVER['SERVER_NAME'] ?? 'localhost', ['localhost', '127.0.0.1'], true);
 if ($__isLocalDb) {
     // Local development (XAMPP)
     define('DB_HOST', 'localhost');
@@ -93,6 +93,7 @@ function getDBConnection()
             // with PHP's Asia/Kolkata default. Otherwise live MySQL (often UTC) returns
             // TIMESTAMP values 5:30 hours off.
             $pdo->exec("SET time_zone = '+05:30'");
+            ensureProductPriceLabelColumns($pdo);
         } catch (PDOException $e) {
             logError('Database Connection Error: ' . $e->getMessage());
             // Only throw exception if explicitly requested (for new JSON APIs)
@@ -105,6 +106,36 @@ function getDBConnection()
     }
 
     return $pdo;
+}
+
+function ensureProductPriceLabelColumns($pdo = null)
+{
+    static $migrated = false;
+    if ($migrated) return;
+    $migrated = true;
+    try {
+        if (!$pdo) $pdo = getDBConnection();
+        try {
+            $pdo->exec("ALTER TABLE catalogue_products ADD COLUMN price_label_1 VARCHAR(100) DEFAULT NULL");
+        } catch (\Throwable $e) {}
+        try {
+            $pdo->exec("ALTER TABLE catalogue_products ADD COLUMN price_label_2 VARCHAR(100) DEFAULT NULL");
+        } catch (\Throwable $e) {}
+        // Per-color size list (JSON) used by variant create/edit and the products API
+        try {
+            if (!$pdo->query("SHOW COLUMNS FROM catalogue_product_variants LIKE 'size_dimensions'")->fetch()) {
+                $pdo->exec("ALTER TABLE catalogue_product_variants ADD COLUMN size_dimensions TEXT NULL DEFAULT NULL");
+            }
+        } catch (\Throwable $e) {
+            logError('size_dimensions migration failed: ' . $e->getMessage());
+        }
+
+        // Clean up accidental global override: reset site-wide defaults back to Zone 1 and Zone 2
+        $pdo->exec("UPDATE settings SET setting_value = 'Zone 1' WHERE setting_key = 'price_label_1' AND (setting_value IS NULL OR UPPER(TRIM(setting_value)) IN ('FABIO', 'FABIO:', 'PED', 'PED:', ''))");
+        $pdo->exec("UPDATE settings SET setting_value = 'Zone 2' WHERE setting_key = 'price_label_2' AND (setting_value IS NULL OR UPPER(TRIM(setting_value)) IN ('PED', 'PED:', 'FABIO', 'FABIO:', ''))");
+    } catch (\Throwable $e) {
+        // Silently continue
+    }
 }
 
 /**
@@ -336,6 +367,58 @@ function updateSetting($key, $value)
             ON DUPLICATE KEY UPDATE setting_value = ?";
     execute($sql, [$key, $value, $value]);
     return true;
+}
+
+/**
+ * Get Dual Price Labels
+ */
+function getPriceLabel1()
+{
+    $val = getSetting('price_label_1');
+    if (!$val || in_array(strtoupper(trim($val)), ['FABIO', 'FABIO:', ''])) {
+        return 'Zone 1';
+    }
+    return $val;
+}
+
+function getPriceLabel2()
+{
+    $val = getSetting('price_label_2');
+    if (!$val || in_array(strtoupper(trim($val)), ['FABIO', 'FABIO:', ''])) {
+        return 'Zone 2';
+    }
+    return $val;
+}
+
+/**
+ * Get Product-Specific Price Labels (with dual storage fallback)
+ */
+function getProductPriceLabel1($productId, $fallbackFromRow = null)
+{
+    if (!empty($fallbackFromRow)) {
+        return trim($fallbackFromRow);
+    }
+    if ($productId) {
+        $settingVal = getSetting('prod_price_label_1_' . $productId);
+        if (!empty($settingVal)) {
+            return trim($settingVal);
+        }
+    }
+    return getPriceLabel1();
+}
+
+function getProductPriceLabel2($productId, $fallbackFromRow = null)
+{
+    if (!empty($fallbackFromRow)) {
+        return trim($fallbackFromRow);
+    }
+    if ($productId) {
+        $settingVal = getSetting('prod_price_label_2_' . $productId);
+        if (!empty($settingVal)) {
+            return trim($settingVal);
+        }
+    }
+    return getPriceLabel2();
 }
 
 /**
@@ -691,6 +774,45 @@ function getWhatsAppTemplateName($key)
     }
     $templates = file_exists($configFile) ? (require $configFile) : [];
     return $templates[$key] ?? $key; // Falls back to key itself if not found
+}
+
+/**
+ * Get Front-end Base URL (used for QR codes, public links, etc.)
+ * @param bool $forceLive If true, returns the public production domain (for printing catalogues)
+ */
+function getFrontBaseUrl(bool $forceLive = false): string
+{
+    $liveDomain = 'https://x-tral.com';
+    try {
+        $setting = fetchOne("SELECT setting_value FROM settings WHERE setting_key IN ('live_site_url', 'company_website', 'site_url') AND setting_value != '' LIMIT 1");
+        if (!empty($setting['setting_value'])) {
+            $val = trim($setting['setting_value']);
+            if (!empty($val)) {
+                $liveDomain = rtrim($val, '/');
+                if (!preg_match('#^https?://#i', $liveDomain)) {
+                    $liveDomain = 'https://' . $liveDomain;
+                }
+            }
+        }
+    } catch (\Throwable $e) {}
+
+    if ($forceLive) {
+        return $liveDomain;
+    }
+
+    // If session preference is set
+    if (isset($_SESSION['qr_domain_mode']) && $_SESSION['qr_domain_mode'] === 'live') {
+        return $liveDomain;
+    }
+
+    $isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || (isset($_SERVER['SERVER_PORT']) && $_SERVER['SERVER_PORT'] == 443);
+    $protocol = $isHttps ? 'https://' : 'http://';
+    $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+    
+    $adminBase = defined('BASE_URL') ? BASE_URL : '/xadmin';
+    $frontPath = preg_replace('#/xadmin/?$#i', '', $adminBase);
+
+    return rtrim($protocol . $host . $frontPath, '/');
 }
 
 // Initialize session on every request

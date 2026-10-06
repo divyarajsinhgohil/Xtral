@@ -144,6 +144,7 @@ if ($productType === 'color') {
         'ProductName(required)',
         'ProductType(required)',
         'DisplayOrder(optional)',
+        'Dimensions(optional)',
         'Specifications(optional)',
         'Image1(optional)', 'Image2(optional)', 'Image3(optional)', 'Image4(optional)', 'Image5(optional)',
         'VariantName(optional)',
@@ -160,7 +161,7 @@ if ($productType === 'color') {
     foreach ($rows as $r) {
         $row = [
             '', $r['Category'], $r['SubCategory'], $r['Series'],
-            '', 'color', '', '',
+            '', 'color', '', '', '',
             '', '', '', '', '',
             '', '', '', '', '',
         ];

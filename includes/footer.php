@@ -10,7 +10,7 @@
     <div class="container">
       <div class="footer-grid">
         <div class="footer-about">
-          <a href="index.php" class="brand">
+          <a href="index" class="brand">
             <span class="brand-mark"></span>
             <span class="brand-text">
               <strong>X-TRAL</strong>
@@ -23,28 +23,21 @@
         <div>
           <h4>Products</h4>
           <div class="footer-links" data-footer-cats>
-            <a href="products.php">View all</a>
+            <a href="products">View all</a>
           </div>
         </div>
         <div>
           <h4>Company</h4>
           <div class="footer-links">
-            <a href="about.php" style="display: block; margin-bottom: 12px;">About Us</a>
-            <a href="profile.php" style="display: block; margin-bottom: 12px;">Company Profile</a>
-            <a href="export.php" style="display: block; margin-bottom: 12px;">Export</a>
-            <a href="catalogue.php" style="display: block; margin-bottom: 12px;">Catalogue</a>
-            <a href="contact.php" style="display: block; margin-bottom: 12px;">Contact</a>
-            <a href="contact.php" style="display: block; margin-bottom: 12px;">Become a Dealer</a>
+            <a href="about" style="display: block; margin-bottom: 12px;">About Us</a>
+            <a href="profile" style="display: block; margin-bottom: 12px;">Company Profile</a>
+            <a href="export" style="display: block; margin-bottom: 12px;">Export</a>
+            <a href="catalogue" style="display: block; margin-bottom: 12px;">Catalogue</a>
+            <a href="contact" style="display: block; margin-bottom: 12px;">Contact</a>
+            <a href="contact" style="display: block; margin-bottom: 12px;">Become a Dealer</a>
           </div>
         </div>
-        <div class="footer-contact">
-          <h4>Get in touch</h4>
-          <div class="footer-links">
-            <a href="mailto:xtralcare@gmail.com" style="display: block; margin-bottom: 12px;" data-site-email>xtralcare@gmail.com</a>
-            <a href="tel:+917200536353" style="display: block; margin-bottom: 12px;" data-site-phone>+91 72005 36353</a>
-            <p data-site-address>Your address line here,<br>City, State – PIN.</p>
-          </div>
-        </div>
+
       </div>
       <div class="copyright">
         <span>© <span data-year>2026</span> X-Tral. All rights reserved.</span>

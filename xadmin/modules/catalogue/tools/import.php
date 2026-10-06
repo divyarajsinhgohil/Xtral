@@ -44,7 +44,7 @@ include dirname(__DIR__, 3) . '/includes/header.php';
                                 <tr><td><code>Series</code></td><td>✅ Required — must match existing series name</td></tr>
                                 <tr><td><code>ProductName</code></td><td>✅ Required</td></tr>
                                 <tr><td><code>ProductCode</code></td><td>✅ Required — can be changed on re-import when matched by <code>ProductID</code></td></tr>
-                                <tr><td><code>HSNCode</code></td><td>✅ Required — GST HSN classification code</td></tr>
+                                <tr><td><code>HSNCode</code></td><td>Optional — GST HSN classification code</td></tr>
                                 <tr><td><code>ProductType</code></td><td>✅ Required — <code>simple</code></td></tr>
                                 <tr><td><code>Price</code></td><td>✅ Required — integer (Zone 1 price)</td></tr>
                                 <tr><td><code>PriceZone2</code></td><td>Optional — for Dual Zone Pricing categories</td></tr>
@@ -63,7 +63,7 @@ include dirname(__DIR__, 3) . '/includes/header.php';
                                 <tr><td><code>SubCategory</code></td><td>Optional</td></tr>
                                 <tr><td><code>Series</code></td><td>✅ Required</td></tr>
                                 <tr><td><code>ProductName</code></td><td>✅ Required — group title</td></tr>
-                                <tr><td><code>HSNCode</code></td><td>✅ Required — GST HSN classification code (from first row of each group)</td></tr>
+                                <tr><td><code>HSNCode</code></td><td>Optional — GST HSN classification code (from first row of each group)</td></tr>
                                 <tr><td><code>ProductType</code></td><td>✅ Always <code>size</code></td></tr>
                                 <tr><td><code>DisplayOrder</code></td><td>Optional — parent product sort order</td></tr>
                                 <tr><td><code>Dimensions</code></td><td>Optional — parent dimensions/size</td></tr>
@@ -93,7 +93,7 @@ include dirname(__DIR__, 3) . '/includes/header.php';
                                 <tr><td><code>SubCategory</code></td><td>Optional</td></tr>
                                 <tr><td><code>Series</code></td><td>✅ Required</td></tr>
                                 <tr><td><code>ProductName</code></td><td>✅ Required — group title</td></tr>
-                                <tr><td><code>HSNCode</code></td><td>✅ Required — GST HSN classification code (from first row of each group)</td></tr>
+                                <tr><td><code>HSNCode</code></td><td>Optional — GST HSN classification code (from first row of each group)</td></tr>
                                 <tr><td><code>ProductType</code></td><td>✅ Always <code>color</code></td></tr>
                                 <tr><td><code>ColourLabel</code></td><td>Optional — <code>Colour</code> or <code>Finish</code> (default: <code>Colour</code>) — sets the label shown in the mobile app</td></tr>
                                 <tr><td><code>DisplayOrder</code></td><td>Optional — parent product sort order</td></tr>

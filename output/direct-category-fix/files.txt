@@ -1,0 +1,14 @@
+xadmin/includes/catalogue_product_hierarchy.php
+xadmin/modules/catalogue/products/repair_direct.php
+xadmin/modules/catalogue/products/create_process.php
+xadmin/modules/catalogue/products/edit_process.php
+xadmin/modules/catalogue/products/list.php
+xadmin/modules/catalogue/products/edit.php
+xadmin/modules/catalogue/products/create.php
+xadmin/api/webapi/products.php
+xadmin/modules/catalogue/tools/export_process.php
+xadmin/modules/catalogue/qr/list.php
+xadmin/modules/catalogue/qr/create.php
+xadmin/modules/catalogue/qr/edit.php
+xadmin/modules/catalogue/qr/generate_bulk.php
+xadmin/modules/catalogue/qr/print_sheet.php

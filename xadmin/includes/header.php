@@ -96,11 +96,11 @@ unset($_SESSION['flash_error'], $_SESSION['flash_success']);
                         <li class="nav-item">
                             <a class="nav-link collapsed d-flex justify-content-between align-items-center"
                                 data-bs-toggle="collapse" data-bs-target="#catalogueMenu"
-                                aria-expanded="<?= in_array($activePage, ['catalogue_categories', 'catalogue_sub_categories', 'catalogue_series', 'catalogue_products', 'catalogue_tools', 'catalogue_colors', 'catalogue_banners', 'catalogue_features', 'whatsapp_catalogues']) ? 'true' : 'false' ?>">
+                                aria-expanded="<?= in_array($activePage, ['catalogue_categories', 'catalogue_sub_categories', 'catalogue_series', 'catalogue_products', 'catalogue_tools', 'catalogue_colors', 'catalogue_banners', 'catalogue_features', 'whatsapp_catalogues', 'catalogue_qr']) ? 'true' : 'false' ?>">
                                 <span><i class="fas fa-book-open me-2"></i>Catalogue</span>
                                 <i class="fas fa-chevron-down small"></i>
                             </a>
-                            <div class="collapse <?= in_array($activePage, ['catalogue_categories', 'catalogue_sub_categories', 'catalogue_series', 'catalogue_products', 'catalogue_tools', 'catalogue_colors', 'catalogue_banners', 'catalogue_features', 'whatsapp_catalogues']) ? 'show' : '' ?>"
+                            <div class="collapse <?= in_array($activePage, ['catalogue_categories', 'catalogue_sub_categories', 'catalogue_series', 'catalogue_products', 'catalogue_tools', 'catalogue_colors', 'catalogue_banners', 'catalogue_features', 'whatsapp_catalogues', 'catalogue_qr']) ? 'show' : '' ?>"
                                 id="catalogueMenu" data-bs-parent="#sidebarAccordion">
                                 <ul class="nav flex-column ms-3">
                                     <li class="nav-item">
@@ -143,6 +143,12 @@ unset($_SESSION['flash_error'], $_SESSION['flash_success']);
                                         <a class="nav-link <?= $activePage === 'catalogue_products' ? 'active' : '' ?>"
                                             href="<?= BASE_URL ?>/modules/catalogue/products/list.php">
                                             <i class="fas fa-box-open me-2"></i>Products
+                                        </a>
+                                    </li>
+                                    <li class="nav-item">
+                                        <a class="nav-link <?= $activePage === 'catalogue_qr' ? 'active' : '' ?>"
+                                            href="<?= BASE_URL ?>/modules/catalogue/qr/list.php">
+                                            <i class="fas fa-qrcode me-2"></i>Product QR Codes
                                         </a>
                                     </li>
                                     <li class="nav-item">

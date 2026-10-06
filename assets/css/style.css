@@ -842,6 +842,12 @@ p {
   color: var(--teal-500);
 }
 
+.btn-filter-toggle.active {
+  border-color: var(--teal-700);
+  background: var(--paper-2);
+  color: var(--teal-900);
+}
+
 .filter-drawer {
   background: var(--paper);
   border: 1.5px solid var(--line);
@@ -874,6 +880,14 @@ p {
 @media (max-width: 1024px) {
   .filter-drawer-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 20px;
+  }
+}
+
+@media (max-width: 640px) {
+  .filter-drawer-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
   }
 }
 
@@ -1212,7 +1226,10 @@ p {
 }
 
 .prod-card h3 {
-  font-size: 1.4rem;
+  font-family: var(--sans);
+  font-weight: 700;
+  font-size: 1.25rem;
+  letter-spacing: -0.01em;
   color: var(--teal-900);
 }
 
@@ -1237,6 +1254,35 @@ p {
   font-size: 1.15rem;
   color: var(--teal-900);
   font-weight: 700;
+}
+
+.prod-card .dual-prices {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.prod-card .dual-price-item {
+  font-family: var(--sans);
+  font-size: 0.88rem;
+  line-height: 1.25;
+  display: flex;
+  align-items: baseline;
+}
+
+.prod-card .dual-price-item .dp-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-right: 5px;
+}
+
+.prod-card .dual-price-item .dp-val {
+  font-size: 0.98rem;
+  font-weight: 700;
+  color: var(--teal-900);
 }
 
 .prod-card .view {
@@ -1328,7 +1374,10 @@ p {
 }
 
 .pd h1 {
-  font-size: clamp(2.4rem, 4.5vw, 3.6rem);
+  font-family: var(--sans);
+  font-weight: 700;
+  font-size: clamp(2.2rem, 4.2vw, 3.2rem);
+  letter-spacing: -0.01em;
   color: var(--teal-900);
   margin: 8px 0 12px;
 }
@@ -1361,6 +1410,61 @@ p {
   display: block;
   letter-spacing: 0.05em;
   margin-top: 6px;
+  font-weight: 500;
+}
+
+.pd-dual-prices {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pd-dual-prices .pd-dual-prices-inline {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 12px 20px;
+}
+
+.pd-dual-prices .pd-price-row {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 7px;
+  white-space: nowrap;
+}
+
+.pd-dual-prices .pd-price-label {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--teal-900);
+  font-family: var(--sans);
+  letter-spacing: 0.02em;
+}
+
+.pd-dual-prices .pd-price-val {
+  font-size: 1.85rem;
+  font-weight: 700;
+  color: var(--teal-900);
+  font-family: var(--sans);
+}
+
+.pd-dual-prices .pd-price-divider {
+  color: var(--line, #cbd5e1);
+  font-size: 1.45rem;
+  font-weight: 300;
+  user-select: none;
+  align-self: center;
+  margin: 0 2px;
+}
+
+.pd-dual-prices .pd-tax-note {
+  font-size: 0.8rem;
+  color: var(--muted);
+  font-family: var(--sans);
+  display: block;
+  letter-spacing: 0.05em;
+  margin-top: 4px;
   font-weight: 500;
 }
 
@@ -3218,11 +3322,19 @@ form .row {
   border: 2px solid var(--gold);
   color: var(--gold);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
-  transition: var(--transition);
+  transition: opacity 0.35s ease, transform 0.35s ease, background 0.3s ease, border-color 0.3s ease;
   pointer-events: none;
+  z-index: 3;
 }
 
-.pd-media-video-container:hover .pd-media-video-play-overlay {
+.pd-media-video-play-overlay.is-hidden {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  transform: translate(-50%, -50%) scale(0.85) !important;
+  pointer-events: none !important;
+}
+
+.pd-media-video-container:hover .pd-media-video-play-overlay:not(.is-hidden) {
   background: var(--teal-600);
   border-color: #fff;
   color: #fff;
@@ -3234,7 +3346,37 @@ form .row {
   width: 28px;
   height: 28px;
   fill: currentColor;
-  margin-left: 4px;
+}
+
+.pd-media-video-lightbox-btn {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 5;
+  transition: all 0.2s ease;
+  opacity: 0;
+}
+
+.pd-media-video-container:hover .pd-media-video-lightbox-btn {
+  opacity: 1;
+}
+
+.pd-media-video-lightbox-btn:hover {
+  background: var(--teal-600);
+  transform: scale(1.1);
+  border-color: #fff;
 }
 
 /* Lightbox video container */
@@ -4600,7 +4742,21 @@ img {
   min-width: 145px;
 }
 
+/* Show the CSS-drawn fallback brand only when no admin logo is configured */
+.brand--fallback .brand-mark {
+  display: block;
+}
+
+.brand--fallback .brand-text {
+  display: block;
+}
+
+.brand-text {
+  display: none;
+}
+
 .brand-mark {
+  display: none;
   width: 34px;
   height: 34px;
   border-radius: 10px;
@@ -4784,7 +4940,7 @@ img {
   inset: 0;
   background-image:
     linear-gradient(90deg, rgba(43, 103, 110, .94) 0%, rgba(43, 103, 110, .78) 31%, rgba(43, 103, 110, .18) 62%, rgba(43, 103, 110, .10) 100%),
-    url("../img/hero_premium_bg.png");
+    url("../img/hero_premium_bg.webp");
   background-size: cover;
   background-position: center;
   transform: scale(1.02);
@@ -5223,7 +5379,7 @@ h2 {
 .quality {
   background:
     linear-gradient(90deg, rgba(43, 103, 110, .95), rgba(43, 103, 110, .78)),
-    url("../img/quality_premium_bg.png");
+    url("../img/quality_premium_bg.webp");
   background-size: cover;
   background-position: center;
   color: white;
@@ -5306,21 +5462,22 @@ h2 {
 }
 
 .sustain-img {
-  border-radius: 30px;
+  border-radius: 26px;
   overflow: hidden;
-  box-shadow: var(--shadow);
+  box-shadow: 0 24px 48px -12px rgba(0, 0, 0, 0.18);
   position: relative;
+  background: #181c1e;
 }
 
 .sustain-img img {
-  height: 470px;
+  width: 100%;
+  height: auto;
+  display: block;
+  object-fit: contain;
 }
 
 .sustain-img::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(180deg, transparent 50%, rgba(43, 103, 110, .28));
+  display: none;
 }
 
 .bullets {
@@ -5390,6 +5547,7 @@ h2 {
 }
 
 footer {
+  font-family: var(--sans);
   background: var(--brand);
   color: rgba(255, 255, 255, .85);
   padding: 70px 0 28px;
@@ -5401,7 +5559,7 @@ footer p {
 
 .footer-grid {
   display: grid;
-  grid-template-columns: 1.4fr repeat(3, 1fr);
+  grid-template-columns: 1.6fr 1fr 1fr;
   gap: 48px;
   padding-bottom: 50px;
   border-bottom: 1px solid rgba(255, 255, 255, .12);
@@ -5436,9 +5594,11 @@ footer .brand-text strong {
 }
 
 footer h4 {
+  font-family: var(--sans);
+  font-weight: 600;
   color: #ffffff;
-  font-size: 12px;
-  letter-spacing: .18em;
+  font-size: 13px;
+  letter-spacing: .12em;
   text-transform: uppercase;
   margin-bottom: 22px;
 }
@@ -5565,7 +5725,7 @@ footer ul {
   }
 
   .sustain-img img {
-    height: 330px;
+    height: auto;
   }
 
   section {
@@ -6099,6 +6259,23 @@ footer ul {
   margin-top: 10px !important;
 }
 
+/* When only one catalogue is available, center it cleanly with elegant max-width */
+.cat-cards-grid--single,
+.cat-cards-grid:has(.cat-mini-item:only-child) {
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+
+.cat-cards-grid--single .cat-mini-item,
+.cat-cards-grid:has(.cat-mini-item:only-child) .cat-mini-item {
+  width: 100% !important;
+  max-width: 380px !important;
+  margin: 0 auto !important;
+}
+
 .cat-mini-item {
   background: #ffffff !important;
   border-radius: 16px !important;
@@ -6286,4 +6463,107 @@ footer ul {
     padding: 10px 8px !important;
     font-size: 10.5px !important;
   }
+}
+
+/* =====================================================================
+   BANNER SLIDER HERO — fixes for admin banners to show with proper height
+   ===================================================================== */
+
+/* Override: when admin banners are active, show them full-height like hero */
+.banner-slider--hero:not([hidden]) {
+  display: block;
+  min-height: 780px;
+  position: relative;
+}
+
+.banner-slider--hero:not([hidden]) .banner-track {
+  min-height: 780px;
+  height: auto;
+  aspect-ratio: unset;
+}
+
+/* Once JS sets the real aspect-ratio via JS, aspect-ratio takes over */
+.banner-slider--hero:not([hidden]) .banner-track[style*="aspect-ratio"] {
+  min-height: 0;
+  aspect-ratio: attr(style);
+}
+
+@media (max-width: 768px) {
+
+  .banner-slider--hero:not([hidden]),
+  .banner-slider--hero:not([hidden]) .banner-track {
+    min-height: 420px;
+  }
+}
+
+@media (max-width: 480px) {
+
+  .banner-slider--hero:not([hidden]),
+  .banner-slider--hero:not([hidden]) .banner-track {
+    min-height: 280px;
+  }
+}
+/* ---- Product page: share icon + menu ---- */
+.pd-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.pd-topbar .crumbs { min-width: 0; }
+.pd-share { position: relative; flex-shrink: 0; }
+.pd-share-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1.5px solid var(--brand);
+  background: transparent;
+  color: var(--brand);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background .2s, color .2s, transform .2s;
+}
+.pd-share-btn:hover,
+.pd-share-btn[aria-expanded="true"] {
+  background: var(--brand);
+  color: #fff;
+  transform: translateY(-2px);
+}
+.pd-share-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 190px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow: 0 16px 40px rgba(18, 55, 59, .16);
+  padding: 6px;
+  z-index: 20;
+}
+.pd-share-menu[hidden] { display: none; }
+.pd-share-menu button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--brand-dark);
+  font: inherit;
+  font-size: .9rem;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+}
+.pd-share-menu button[hidden] { display: none; }
+.pd-share-menu button:hover { background: rgba(43, 103, 110, .08); }
+.pd-share-menu [data-share-action="whatsapp"] svg { color: #25D366; }
+
+@media (max-width: 768px) {
+  .pd-share-btn { width: 40px; height: 40px; }
 }

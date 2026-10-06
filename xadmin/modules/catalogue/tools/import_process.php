@@ -89,7 +89,7 @@ foreach ($headers as $i => $h) {
 if ($productType === 'simple') {
 
     // Validate Required Headers
-    $requiredKeys = ['category', 'series', 'productname', 'productcode', 'hsncode', 'price', 'image1'];
+    $requiredKeys = ['category', 'series', 'productname', 'productcode', 'price', 'image1'];
     $missingKeys = [];
     foreach ($requiredKeys as $k) {
         if (!isset($map[$k]))
@@ -104,6 +104,7 @@ if ($productType === 'simple') {
 
     // Check optional columns
     $hasProductId = isset($map['productid']);
+    $hasHsnCode = isset($map['hsncode']);
     $hasPriceZone2 = isset($map['pricezone2']);
     $hasSubCategory = isset($map['subcategory']);
     $hasDimensions = isset($map['dimensions']);
@@ -119,8 +120,8 @@ if ($productType === 'simple') {
         $stmtGetSubCat = $pdo->prepare("SELECT id FROM catalogue_sub_categories WHERE name = ? AND category_id = ? AND is_active = 1 LIMIT 1");
         $stmtGetSeries = $pdo->prepare("SELECT id FROM catalogue_series WHERE name = ? AND category_id = ? AND (sub_category_id = ? OR (? IS NULL AND sub_category_id IS NULL)) AND is_active = 1 LIMIT 1");
 
-        $stmtCheckProdById = $pdo->prepare("SELECT id, series_id FROM catalogue_products WHERE id = ? LIMIT 1");
-        $stmtCheckProdByCode = $pdo->prepare("SELECT id FROM catalogue_products WHERE code = ? AND series_id = ? LIMIT 1");
+        $stmtCheckProdById = $pdo->prepare("SELECT id, series_id, hsn_code FROM catalogue_products WHERE id = ? LIMIT 1");
+        $stmtCheckProdByCode = $pdo->prepare("SELECT id, hsn_code FROM catalogue_products WHERE code = ? AND series_id = ? LIMIT 1");
         $stmtInsertProd = $pdo->prepare("INSERT INTO catalogue_products (series_id, name, code, hsn_code, price, price_zone2, dimensions, specifications, variant_type, is_active, display_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'none', 1, ?)");
         $stmtUpdateProd = $pdo->prepare("UPDATE catalogue_products SET series_id=?, name=?, code=?, hsn_code=?, price=?, price_zone2=?, dimensions=?, specifications=?, display_order=? WHERE id=?");
 
@@ -143,7 +144,7 @@ if ($productType === 'simple') {
             $seriesName = trim($data[$map['series']] ?? '');
             $prodName = trim($data[$map['productname']] ?? '');
             $prodCode = trim($data[$map['productcode']] ?? '');
-            $hsnCode = trim($data[$map['hsncode']] ?? '');
+            $hsnCode = ($hasHsnCode && trim($data[$map['hsncode']] ?? '') !== '') ? trim($data[$map['hsncode']]) : null;
             $price = intval(preg_replace('/[^\d]/', '', $data[$map['price']] ?? 0));
             $priceZone2 = $hasPriceZone2 ? (trim($data[$map['pricezone2']] ?? '') !== '' ? intval(preg_replace('/[^\d]/', '', $data[$map['pricezone2']])) : null) : null;
             $dims = $hasDimensions ? trim($data[$map['dimensions']] ?? '') : '';
@@ -172,8 +173,6 @@ if ($productType === 'simple') {
                 throw new Exception("Row $rowNum: 'ProductName' is required.");
             if (empty($prodCode))
                 throw new Exception("Row $rowNum: 'ProductCode' is required.");
-            if (empty($hsnCode))
-                throw new Exception("Row $rowNum: 'HSNCode' is required.");
             if (empty($images) && !$simulate)
                 throw new Exception("Row $rowNum: 'Image1' is required.");
 
@@ -199,25 +198,33 @@ if ($productType === 'simple') {
 
             // Product Logic
             $existingId = null;
+            $existingHsn = null;
             if (!empty($productId)) {
                 $stmtCheckProdById->execute([$productId]);
                 $existingRow = $stmtCheckProdById->fetch(PDO::FETCH_ASSOC);
-                if ($existingRow)
+                if ($existingRow) {
                     $existingId = $existingRow['id'];
+                    $existingHsn = $existingRow['hsn_code'] ?? null;
+                }
             }
             if (!$existingId) {
                 $stmtCheckProdByCode->execute([$prodCode, $seriesId]);
-                $existingId = $stmtCheckProdByCode->fetchColumn();
+                $existingRow = $stmtCheckProdByCode->fetch(PDO::FETCH_ASSOC);
+                if ($existingRow) {
+                    $existingId = $existingRow['id'];
+                    $existingHsn = $existingRow['hsn_code'] ?? null;
+                }
             }
 
             $prodId = $existingId;
+            $finalHsnCode = $hasHsnCode ? $hsnCode : ($existingId ? $existingHsn : null);
 
             if ($existingId) {
-                $stmtUpdateProd->execute([$seriesId, $prodName, $prodCode, $hsnCode, $price, $priceZone2, $dims, $specs, $displayOrder, $existingId]);
+                $stmtUpdateProd->execute([$seriesId, $prodName, $prodCode, $finalHsnCode, $price, $priceZone2, $dims, $specs, $displayOrder, $existingId]);
                 $updateCount++;
             }
             else {
-                $stmtInsertProd->execute([$seriesId, $prodName, $prodCode, $hsnCode, $price, $priceZone2, $dims, $specs, $displayOrder]);
+                $stmtInsertProd->execute([$seriesId, $prodName, $prodCode, $finalHsnCode, $price, $priceZone2, $dims, $specs, $displayOrder]);
                 $prodId = $pdo->lastInsertId();
                 $successCount++;
             }
@@ -289,7 +296,7 @@ if ($productType === 'simple') {
 if ($productType === 'size') {
 
     // Validate Required Headers
-    $requiredKeys = ['category', 'series', 'productname', 'hsncode', 'variantcode', 'size', 'price'];
+    $requiredKeys = ['category', 'series', 'productname', 'variantcode', 'size', 'price'];
     $missingKeys = [];
     foreach ($requiredKeys as $k) {
         if (!isset($map[$k]))
@@ -304,6 +311,7 @@ if ($productType === 'size') {
 
     // Optional columns
     $hasProductId = isset($map['productid']);
+    $hasHsnCode = isset($map['hsncode']);
     $hasSubCategory = isset($map['subcategory']);
     $hasPriceZone2 = isset($map['pricezone2']);
     $hasSpecifications = isset($map['specifications']);
@@ -364,8 +372,8 @@ if ($productType === 'size') {
         $stmtGetSeries = $pdo->prepare("SELECT id FROM catalogue_series WHERE name = ? AND category_id = ? AND (sub_category_id = ? OR (? IS NULL AND sub_category_id IS NULL)) AND is_active = 1 LIMIT 1");
 
         // Parent product statements
-        $stmtCheckProdById = $pdo->prepare("SELECT id, series_id FROM catalogue_products WHERE id = ? AND variant_type = 'size' LIMIT 1");
-        $stmtCheckProdByName = $pdo->prepare("SELECT id FROM catalogue_products WHERE name = ? AND series_id = ? AND variant_type = 'size' LIMIT 1");
+        $stmtCheckProdById = $pdo->prepare("SELECT id, series_id, hsn_code FROM catalogue_products WHERE id = ? AND variant_type = 'size' LIMIT 1");
+        $stmtCheckProdByName = $pdo->prepare("SELECT id, hsn_code FROM catalogue_products WHERE name = ? AND series_id = ? AND variant_type = 'size' LIMIT 1");
         $stmtInsertProd = $pdo->prepare("INSERT INTO catalogue_products (series_id, name, code, hsn_code, price, price_zone2, dimensions, specifications, variant_type, is_active, display_order) VALUES (?, ?, NULL, ?, 0, NULL, ?, ?, 'size', 1, ?)");
         $stmtUpdateProd = $pdo->prepare("UPDATE catalogue_products SET series_id=?, name=?, hsn_code=?, dimensions=?, specifications=?, display_order=? WHERE id=?");
 
@@ -424,13 +432,9 @@ if ($productType === 'size') {
             // Parent-level fields from first row
             $specs = $hasSpecifications ? str_replace(["\r\n", "\r", "\n"], '<br>', trim($firstRow[$map['specifications']] ?? '')) : '';
             $dims = isset($map['dimensions']) ? trim($firstRow[$map['dimensions']] ?? '') : '';
-            $hsnCode = trim($firstRow[$map['hsncode']] ?? '');
+            $hsnCode = ($hasHsnCode && trim($firstRow[$map['hsncode']] ?? '') !== '') ? trim($firstRow[$map['hsncode']]) : null;
             $displayOrder = $hasDisplayOrder ? intval($firstRow[$map['displayorder']] ?? 0) : 0;
             $productId = $hasProductId ? trim($firstRow[$map['productid']] ?? '') : '';
-
-            // Validate HSNCode at parent level (compulsory)
-            if (empty($hsnCode))
-                throw new Exception("Row $firstRowNum: 'HSNCode' is required.");
 
             // Parent gallery images from first row
             $parentImages = [];
@@ -442,6 +446,7 @@ if ($productType === 'size') {
 
             // Find or create parent product
             $existingProdId = null;
+            $existingHsn = null;
 
             // Only attempt ID match if ProductID is truly numeric (so dummy IDs like 'NEW-1' are ignored for DB lookup)
             $isNumericProductId = !empty($productId) && is_numeric($productId);
@@ -450,25 +455,32 @@ if ($productType === 'size') {
             if ($isNumericProductId) {
                 $stmtCheckProdById->execute([$productId]);
                 $existingRow = $stmtCheckProdById->fetch(PDO::FETCH_ASSOC);
-                if ($existingRow)
+                if ($existingRow) {
                     $existingProdId = $existingRow['id'];
+                    $existingHsn = $existingRow['hsn_code'] ?? null;
+                }
             }
 
             // Priority 2: Match by Name + Series
             // BUT ONLY IF we didn't explicitly pass a dummy ProductID to force a new product
             if (!$existingProdId && empty($productId)) {
                 $stmtCheckProdByName->execute([$prodName, $seriesId]);
-                $existingProdId = $stmtCheckProdByName->fetchColumn();
+                $existingRow = $stmtCheckProdByName->fetch(PDO::FETCH_ASSOC);
+                if ($existingRow) {
+                    $existingProdId = $existingRow['id'];
+                    $existingHsn = $existingRow['hsn_code'] ?? null;
+                }
             }
 
             $prodId = $existingProdId;
+            $finalHsnCode = $hasHsnCode ? $hsnCode : ($existingProdId ? $existingHsn : null);
 
             if ($existingProdId) {
-                $stmtUpdateProd->execute([$seriesId, $prodName, $hsnCode, $dims, $specs, $displayOrder, $existingProdId]);
+                $stmtUpdateProd->execute([$seriesId, $prodName, $finalHsnCode, $dims, $specs, $displayOrder, $existingProdId]);
                 $updatedProductCount++;
             }
             else {
-                $stmtInsertProd->execute([$seriesId, $prodName, $hsnCode, $dims, $specs, $displayOrder]);
+                $stmtInsertProd->execute([$seriesId, $prodName, $finalHsnCode, $dims, $specs, $displayOrder]);
                 $prodId = $pdo->lastInsertId();
                 $newProductCount++;
             }
@@ -604,7 +616,7 @@ if ($productType === 'size') {
 if ($productType === 'color') {
 
     // Validate Required Headers
-    $requiredKeys = ['category', 'series', 'productname', 'hsncode', 'variantcode', 'colorname', 'price'];
+    $requiredKeys = ['category', 'series', 'productname', 'variantcode', 'colorname', 'price'];
     $missingKeys = [];
     foreach ($requiredKeys as $k) {
         if (!isset($map[$k]))
@@ -619,6 +631,7 @@ if ($productType === 'color') {
 
     // Optional columns
     $hasProductId = isset($map['productid']);
+    $hasHsnCode = isset($map['hsncode']);
     $hasSubCategory = isset($map['subcategory']);
     $hasPriceZone2 = isset($map['pricezone2']);
     $hasSpecifications = isset($map['specifications']);
@@ -682,8 +695,8 @@ if ($productType === 'color') {
         $stmtGetSeries = $pdo->prepare("SELECT id FROM catalogue_series WHERE name = ? AND category_id = ? AND (sub_category_id = ? OR (? IS NULL AND sub_category_id IS NULL)) AND is_active = 1 LIMIT 1");
 
         // Parent product statements
-        $stmtCheckProdById = $pdo->prepare("SELECT id, series_id FROM catalogue_products WHERE id = ? AND variant_type = 'color' LIMIT 1");
-        $stmtCheckProdByName = $pdo->prepare("SELECT id FROM catalogue_products WHERE name = ? AND series_id = ? AND variant_type = 'color' LIMIT 1");
+        $stmtCheckProdById = $pdo->prepare("SELECT id, series_id, hsn_code FROM catalogue_products WHERE id = ? AND variant_type = 'color' LIMIT 1");
+        $stmtCheckProdByName = $pdo->prepare("SELECT id, hsn_code FROM catalogue_products WHERE name = ? AND series_id = ? AND variant_type = 'color' LIMIT 1");
         $stmtInsertProd = $pdo->prepare("INSERT INTO catalogue_products (series_id, name, code, hsn_code, price, price_zone2, dimensions, specifications, colour_label, variant_type, is_active, display_order) VALUES (?, ?, NULL, ?, 0, NULL, ?, ?, ?, 'color', 1, ?)");
         $stmtUpdateProd = $pdo->prepare("UPDATE catalogue_products SET series_id=?, name=?, hsn_code=?, dimensions=?, specifications=?, colour_label=?, display_order=? WHERE id=?");
 
@@ -746,15 +759,11 @@ if ($productType === 'color') {
             // Parent-level fields from first row
             $specs = $hasSpecifications ? str_replace(["\r\n", "\r", "\n"], '<br>', trim($firstRow[$map['specifications']] ?? '')) : '';
             $dims = isset($map['dimensions']) ? trim($firstRow[$map['dimensions']] ?? '') : '';
-            $hsnCode = trim($firstRow[$map['hsncode']] ?? '');
+            $hsnCode = ($hasHsnCode && trim($firstRow[$map['hsncode']] ?? '') !== '') ? trim($firstRow[$map['hsncode']]) : null;
             $colourLabelRaw = $hasColourLabel ? strtolower(trim($firstRow[$map['colourlabel']] ?? '')) : 'colour';
             $colourLabel = in_array($colourLabelRaw, ['colour', 'finish']) ? $colourLabelRaw : 'colour';
             $displayOrder = $hasDisplayOrder ? intval($firstRow[$map['displayorder']] ?? 0) : 0;
             $productId = $hasProductId ? trim($firstRow[$map['productid']] ?? '') : '';
-
-            // Validate HSNCode at parent level (compulsory)
-            if (empty($hsnCode))
-                throw new Exception("Row $firstRowNum: 'HSNCode' is required.");
 
             // Parent gallery images from first row
             $parentImages = [];
@@ -766,6 +775,7 @@ if ($productType === 'color') {
 
             // Find or create parent product
             $existingProdId = null;
+            $existingHsn = null;
 
             // Only attempt ID match if ProductID is truly numeric (so dummy IDs like 'NEW-1' are ignored for DB lookup)
             $isNumericProductId = !empty($productId) && is_numeric($productId);
@@ -774,25 +784,32 @@ if ($productType === 'color') {
             if ($isNumericProductId) {
                 $stmtCheckProdById->execute([$productId]);
                 $existingRow = $stmtCheckProdById->fetch(PDO::FETCH_ASSOC);
-                if ($existingRow)
+                if ($existingRow) {
                     $existingProdId = $existingRow['id'];
+                    $existingHsn = $existingRow['hsn_code'] ?? null;
+                }
             }
 
             // Priority 2: Match by Name + Series 
             // BUT ONLY IF we didn't explicitly pass a dummy ProductID to force a new product
             if (!$existingProdId && empty($productId)) {
                 $stmtCheckProdByName->execute([$prodName, $seriesId]);
-                $existingProdId = $stmtCheckProdByName->fetchColumn();
+                $existingRow = $stmtCheckProdByName->fetch(PDO::FETCH_ASSOC);
+                if ($existingRow) {
+                    $existingProdId = $existingRow['id'];
+                    $existingHsn = $existingRow['hsn_code'] ?? null;
+                }
             }
 
             $prodId = $existingProdId;
+            $finalHsnCode = $hasHsnCode ? $hsnCode : ($existingProdId ? $existingHsn : null);
 
             if ($existingProdId) {
-                $stmtUpdateProd->execute([$seriesId, $prodName, $hsnCode, $dims, $specs, $colourLabel, $displayOrder, $existingProdId]);
+                $stmtUpdateProd->execute([$seriesId, $prodName, $finalHsnCode, $dims, $specs, $colourLabel, $displayOrder, $existingProdId]);
                 $updatedProductCount++;
             }
             else {
-                $stmtInsertProd->execute([$seriesId, $prodName, $hsnCode, $dims, $specs, $colourLabel, $displayOrder]);
+                $stmtInsertProd->execute([$seriesId, $prodName, $finalHsnCode, $dims, $specs, $colourLabel, $displayOrder]);
                 $prodId = $pdo->lastInsertId();
                 $newProductCount++;
             }

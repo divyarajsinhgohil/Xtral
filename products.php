@@ -6,15 +6,14 @@ include __DIR__ . '/includes/header.php';
 
   <section class="page-banner">
     <div class="container">
-      <span class="eyebrow">Product Catalogue</span>
-      <h1 data-cat-title>All Products</h1>
+      <span class="eyebrow" data-cat-eyebrow>Our Products</span>
+      <h1 data-cat-title>Our Products</h1>
       <p data-cat-sub>Browse the complete X-Tral range across every category.</p>
     </div>
   </section>
 
   <section class="section">
     <div class="container">
-      <div class="cat-grid" data-sub-tiles-grid style="display: none; margin-bottom: 50px;"></div>
 
       <div class="toolbar">
         <button id="toggle-filter-btn" class="btn-filter-toggle">
@@ -31,7 +30,7 @@ include __DIR__ . '/includes/header.php';
 
       <div class="filter-drawer" id="filter-drawer" style="display: none; margin-bottom: 40px;">
         <div class="filter-drawer-grid">
-          <div class="filter-group">
+          <div class="filter-group" id="filter-group-category">
             <span class="filter-label">Category</span>
             <div class="custom-select" id="select-category">
               <div class="custom-select-trigger">
@@ -42,6 +41,20 @@ include __DIR__ . '/includes/header.php';
               </div>
               <div class="custom-options" data-options-container>
                 <div class="custom-option selected" data-value="all">All Categories</div>
+              </div>
+            </div>
+          </div>
+          <div class="filter-group" id="filter-group-series">
+            <span class="filter-label">Series</span>
+            <div class="custom-select" id="select-series">
+              <div class="custom-select-trigger">
+                <span data-selected-label>All Series</span>
+                <span class="arrow">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                </span>
+              </div>
+              <div class="custom-options" data-options-container>
+                <div class="custom-option selected" data-value="all">All Series</div>
               </div>
             </div>
           </div>

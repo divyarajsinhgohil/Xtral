@@ -36,13 +36,28 @@ if (!empty($where)) {
     $sql .= " WHERE " . implode(" AND ", $where);
 }
 
-$sql .= " ORDER BY c.name ASC, sc.name ASC, s.display_order ASC, s.name ASC";
+// Find currently active category object for reorder mode display
+$selectedCategoryObj = null;
+if ($categoryId !== '') {
+    foreach ($allCategories as $c) {
+        if ((int)$c['id'] === (int)$categoryId) {
+            $selectedCategoryObj = $c;
+            break;
+        }
+    }
+}
+
+if ($categoryId !== '') {
+    $sql .= " ORDER BY s.display_order ASC, s.name ASC";
+} else {
+    $sql .= " ORDER BY c.name ASC, sc.name ASC, s.display_order ASC, s.name ASC";
+}
 $series = fetchAll($sql, $params);
 
 $activePage = 'catalogue_series';
 $pageTitle = 'Catalogue Series';
 
-// Load Select2
+// Load Select2 & Sortable Styles
 $additionalCSS = '<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet">
 <style>
@@ -94,7 +109,89 @@ $additionalCSS = '<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/di
     .filter-bar-form .filter-reset {
         flex: 0 0 auto;
     }
+    /* ── Drag & Drop & Up/Down Reorder Styles ── */
+    .drag-handle {
+        cursor: grab;
+        cursor: -webkit-grab;
+        color: #6c757d;
+        padding: 3px 5px;
+        border-radius: 4px;
+        transition: color 0.15s, background-color 0.15s;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .drag-handle:hover {
+        color: #0d6efd;
+        background-color: #e9ecef;
+    }
+    .drag-handle:active {
+        cursor: grabbing;
+        cursor: -webkit-grabbing;
+    }
+    .order-btn-group {
+        display: inline-flex;
+        flex-direction: column;
+        vertical-align: middle;
+    }
+    .order-btn-group .btn-move-up,
+    .order-btn-group .btn-move-down {
+        padding: 1px 4px !important;
+        font-size: 0.65rem !important;
+        line-height: 1 !important;
+        height: 13px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid #dee2e6;
+        background: #f8f9fa;
+        color: #495057;
+        cursor: pointer;
+        transition: all 0.15s ease-in-out;
+    }
+    .order-btn-group .btn-move-up:hover:not(:disabled),
+    .order-btn-group .btn-move-down:hover:not(:disabled) {
+        background: #0d6efd;
+        color: #fff;
+        border-color: #0d6efd;
+    }
+    .order-btn-group .btn-move-up:disabled,
+    .order-btn-group .btn-move-down:disabled {
+        opacity: 0.3;
+        cursor: not-allowed;
+    }
+    .order-badge-interactive {
+        cursor: pointer;
+        transition: transform 0.15s ease, background-color 0.15s;
+        user-select: none;
+    }
+    .order-badge-interactive:hover {
+        background-color: #0d6efd !important;
+        transform: scale(1.1);
+    }
+    .row-highlight-move {
+        animation: highlightRow 1.2s ease-out;
+    }
+    @keyframes highlightRow {
+        0% { background-color: #cfe2ff !important; }
+        50% { background-color: #e8f0fe !important; }
+        100% { background-color: transparent; }
+    }
+    tr.row-reorder-selected {
+        outline: 2px solid #0d6efd;
+        outline-offset: -2px;
+        background-color: #f0f7ff !important;
+    }
+    .sortable-ghost {
+        opacity: 0.35;
+        background-color: #cfe2ff !important;
+    }
+    .sortable-chosen {
+        background-color: #fff3cd !important;
+    }
 </style>';
+
+$additionalJS = '<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>';
 
 include dirname(__DIR__, 3) . '/includes/header.php';
 ?>
@@ -178,6 +275,30 @@ include dirname(__DIR__, 3) . '/includes/header.php';
             </form>
         </div>
     </div>
+    <!-- Filter Bar End -->
+
+    <?php if ($selectedCategoryObj): ?>
+        <div class="alert alert-primary d-flex flex-wrap align-items-center justify-content-between py-2 px-3 mb-3 shadow-sm border-0" id="reorderBanner" style="background: linear-gradient(135deg, #e8f0fe, #f8fafc); border-left: 4px solid #0d6efd !important;">
+            <div class="d-flex align-items-center me-3 my-1">
+                <i class="fas fa-arrows-alt-v fs-5 text-primary me-2"></i>
+                <div>
+                    <strong class="text-primary">Series Reorder Mode ("<?= htmlspecialchars($selectedCategoryObj['name']) ?>"):</strong>
+                    <span class="text-dark ms-1">Move series to change index: drag using cursor handle <i class="fas fa-grip-vertical text-muted mx-1"></i>, use <strong>Up / Down</strong> buttons, press <strong>Alt+Up / Alt+Down</strong> keys, or click index badge directly to set order.</span>
+                </div>
+            </div>
+            <div class="d-flex align-items-center gap-2 my-1">
+                <span id="reorderSpinner" class="spinner-border spinner-border-sm text-primary" style="display:none;" role="status"></span>
+                <span id="reorderToast" class="badge bg-success px-3 py-2 fs-6 shadow-sm" style="display:none;">
+                    <i class="fas fa-check-circle me-1"></i> Order Saved!
+                </span>
+            </div>
+        </div>
+    <?php else: ?>
+        <div class="alert alert-light border d-flex align-items-center py-2 px-3 mb-3 small text-muted">
+            <i class="fas fa-info-circle text-primary me-2"></i>
+            <span><strong>Tip:</strong> Select a <strong>Category</strong> in the filter above to easily drag and drop or use Up / Down buttons to adjust series display order for that category.</span>
+        </div>
+    <?php endif; ?>
 
     <div class="card shadow">
         <div class="card-body">
@@ -189,7 +310,7 @@ include dirname(__DIR__, 3) . '/includes/header.php';
                             <th width="40" class="text-center">
                                 <input class="form-check-input" type="checkbox" id="selectAll">
                             </th>
-                            <th width="50">Order</th>
+                            <th width="115" class="text-center"><?= $categoryId !== '' ? '<i class="fas fa-arrows-alt-v text-primary me-1"></i>Order' : 'Order' ?></th>
                             <th width="80">Image</th>
                             <th>Series Name</th>
                             <th>Category</th>
@@ -200,12 +321,26 @@ include dirname(__DIR__, 3) . '/includes/header.php';
                     </thead>
                     <tbody>
                         <?php foreach ($series as $item): ?>
-                        <tr>
+                        <tr data-series-id="<?= $item['id'] ?>">
                             <td class="text-center">
                                 <input class="form-check-input row-checkbox" type="checkbox" name="series_ids[]" value="<?= $item['id'] ?>">
                             </td>
-                            <td>
-                                <span class="badge bg-secondary"><?= $item['display_order'] ?></span>
+                            <td class="text-center">
+                                <div class="d-flex align-items-center justify-content-center gap-1">
+                                    <?php if ($categoryId !== ''): ?>
+                                        <span class="drag-handle" title="Drag to reorder with cursor"><i class="fas fa-grip-vertical"></i></span>
+                                        <div class="btn-group-vertical btn-group-sm order-btn-group" role="group">
+                                            <button type="button" class="btn btn-sm btn-light border-0 p-0 px-1 btn-move-up" title="Move Up (Alt+Up)">
+                                                <i class="fas fa-chevron-up text-secondary" style="font-size: 0.65rem;"></i>
+                                            </button>
+                                            <button type="button" class="btn btn-sm btn-light border-0 p-0 px-1 btn-move-down" title="Move Down (Alt+Down)">
+                                                <i class="fas fa-chevron-down text-secondary" style="font-size: 0.65rem;"></i>
+                                            </button>
+                                        </div>
+                                    <?php endif; ?>
+                                    <span class="badge bg-secondary order-badge <?= $categoryId !== '' ? 'order-badge-interactive' : '' ?>"
+                                          title="<?= $categoryId !== '' ? 'Click to set order index directly' : '' ?>"><?= $item['display_order'] ?></span>
+                                </div>
                             </td>
                             <td>
                                 <?php if (!empty($item['image_url'])): ?>
@@ -249,17 +384,22 @@ include dirname(__DIR__, 3) . '/includes/header.php';
                             </td>
                             <td>
                                 <div class="btn-group btn-group-sm">
+                                    <a href="../products/list.php?series_id=<?= $item['id'] ?>" 
+                                       class="btn btn-outline-info" 
+                                       title="Manage & Reorder Products in this Series">
+                                        <i class="fas fa-boxes"></i>
+                                    </a>
                                     <a href="edit.php?id=<?= $item['id'] ?>" 
                                        class="btn btn-outline-primary" 
                                        title="Edit">
                                         <i class="fas fa-edit"></i>
                                     </a>
                                     <button type="button" 
-                                            class="btn btn-outline-danger" 
-                                            onclick="confirmDelete(<?= $item['id'] ?>, '<?= htmlspecialchars($item['name']) ?>')"
-                                            title="Delete">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
+                                             class="btn btn-outline-danger" 
+                                             onclick="confirmDelete(<?= $item['id'] ?>, '<?= htmlspecialchars($item['name']) ?>')"
+                                             title="Delete">
+                                         <i class="fas fa-trash"></i>
+                                     </button>
                                 </div>
                             </td>
                         </tr>
@@ -309,18 +449,197 @@ const allSubCategories = <?= json_encode(array_values($allSubCategories)) ?>;
 
 $(document).ready(function() {
 
+    var isCategoryFiltered = <?= $categoryId !== '' ? 'true' : 'false' ?>;
+
     // ── DataTable ────────────────────────────────────────────────
     var table = $('#seriesTable').DataTable({
-        order: [[3, 'asc'], [4, 'asc'], [1, 'asc']], // Adjusted to account for new checkbox column
-        pageLength: 25,
+        order: isCategoryFiltered ? [] : [[3, 'asc'], [4, 'asc'], [1, 'asc']],
+        pageLength: isCategoryFiltered ? -1 : 25,
+        lengthMenu: isCategoryFiltered 
+            ? [[-1, 25, 50, 100], ["All (Reorder)", 25, 50, 100]] 
+            : [[10, 25, 50, 100, -1], [10, 25, 50, 100, "All"]],
         language: { search: "Search series:" },
         columnDefs: [
-            { orderable: false, targets: [0, 2, 7] } // 0=Checkbox, 2=Image, 7=Actions
+            { orderable: false, targets: isCategoryFiltered ? [0, 1, 2, 7] : [0, 2, 7] }
         ],
         dom: "<'row'<'col-sm-12 col-md-6 d-flex align-items-center'l<'#bulkDeleteContainer.ms-3'>><'col-sm-12 col-md-6'f>>" +
              "<'row'<'col-sm-12'tr>>" +
              "<'row'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>",
     });
+
+    // ── Button disabled states (top/bottom) ───────────────────────
+    function updateButtonsState() {
+        var $rows = $('#seriesTable tbody tr[data-series-id]');
+        var count = $rows.length;
+        $rows.each(function(idx) {
+            $(this).find('.btn-move-up').prop('disabled', idx === 0);
+            $(this).find('.btn-move-down').prop('disabled', idx === count - 1);
+        });
+    }
+
+    function highlightAndSave($row) {
+        $row.removeClass('row-highlight-move');
+        void $row[0].offsetWidth; // Force reflow
+        $row.addClass('row-highlight-move');
+        if ($row[0] && typeof $row[0].scrollIntoViewIfNeeded === 'function') {
+            $row[0].scrollIntoViewIfNeeded(false);
+        }
+        updateButtonsState();
+        saveSeriesOrder();
+    }
+
+    // ── Up / Down Button Handlers ─────────────────────────────────
+    $('#seriesTable tbody').on('click', '.btn-move-up', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        var $row = $(this).closest('tr[data-series-id]');
+        var $prev = $row.prev('tr[data-series-id]');
+        if ($prev.length) {
+            $prev.before($row);
+            highlightAndSave($row);
+        }
+    });
+
+    $('#seriesTable tbody').on('click', '.btn-move-down', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        var $row = $(this).closest('tr[data-series-id]');
+        var $next = $row.next('tr[data-series-id]');
+        if ($next.length) {
+            $next.after($row);
+            highlightAndSave($row);
+        }
+    });
+
+    // ── Click Order Badge to Set Index Directly ───────────────────
+    $('#seriesTable tbody').on('click', '.order-badge-interactive', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        var $row = $(this).closest('tr[data-series-id]');
+        var currentIdx = parseInt($(this).text().trim(), 10) || 1;
+        var totalRows = $('#seriesTable tbody tr[data-series-id]').length;
+        var target = prompt('Move this series to index position (1 to ' + totalRows + '):', currentIdx);
+        if (target === null) return;
+        target = parseInt(target, 10);
+        if (isNaN(target) || target < 1 || target > totalRows || target === currentIdx) return;
+
+        var $allRows = $('#seriesTable tbody tr[data-series-id]');
+        if (target === 1) {
+            $allRows.first().before($row);
+        } else if (target >= totalRows) {
+            $allRows.last().after($row);
+        } else {
+            var targetRow = $allRows.get(target - 1);
+            if (target < currentIdx) {
+                $(targetRow).before($row);
+            } else {
+                $(targetRow).after($row);
+            }
+        }
+        highlightAndSave($row);
+    });
+
+    // ── Row Selection & Keyboard Arrow Controls (Up / Down) ──────
+    $('#seriesTable tbody').on('click', 'tr[data-series-id]', function(e) {
+        if ($(e.target).closest('a, button, input, select, .drag-handle').length) return;
+        $('#seriesTable tbody tr').removeClass('row-reorder-selected');
+        $(this).addClass('row-reorder-selected');
+    });
+
+    $(document).on('keydown', function(e) {
+        if (!isCategoryFiltered) return;
+        if ($(e.target).is('input, textarea, select')) return;
+        var $selected = $('#seriesTable tbody tr.row-reorder-selected');
+        if (!$selected.length) return;
+
+        if (e.key === 'ArrowUp' || (e.altKey && e.key === 'ArrowUp')) {
+            e.preventDefault();
+            var $prev = $selected.prev('tr[data-series-id]');
+            if ($prev.length) {
+                $prev.before($selected);
+                highlightAndSave($selected);
+            }
+        } else if (e.key === 'ArrowDown' || (e.altKey && e.key === 'ArrowDown')) {
+            e.preventDefault();
+            var $next = $selected.next('tr[data-series-id]');
+            if ($next.length) {
+                $next.after($selected);
+                highlightAndSave($selected);
+            }
+        }
+    });
+
+    // ── Drag & Drop Series Reordering ─────────────────────────────
+    if (isCategoryFiltered && typeof Sortable !== 'undefined') {
+        var tbodyEl = document.querySelector('#seriesTable tbody');
+        if (tbodyEl) {
+            Sortable.create(tbodyEl, {
+                handle: '.drag-handle',
+                animation: 180,
+                ghostClass: 'sortable-ghost',
+                chosenClass: 'sortable-chosen',
+                onStart: function() {
+                    if (table.search()) {
+                        alert("Note: Search filter is active. Clear search for full category reordering.");
+                    }
+                },
+                onEnd: function() {
+                    updateButtonsState();
+                    saveSeriesOrder();
+                }
+            });
+        }
+    }
+
+    updateButtonsState();
+
+    function saveSeriesOrder() {
+        if (table.search()) {
+            alert("Please clear the search filter before reordering series to preserve all items.");
+            return;
+        }
+
+        var seriesIds = [];
+        $('#seriesTable tbody tr[data-series-id]').each(function(idx) {
+            var sid = $(this).attr('data-series-id');
+            if (sid) {
+                seriesIds.push(sid);
+                $(this).find('.order-badge').text(idx + 1);
+            }
+        });
+
+        if (seriesIds.length === 0) return;
+
+        var $spinner = $('#reorderSpinner');
+        var $toast = $('#reorderToast');
+
+        if ($spinner.length) $spinner.show();
+        if ($toast.length) $toast.hide();
+
+        fetch('reorder.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ series_ids: seriesIds })
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(res) {
+            if ($spinner.length) $spinner.hide();
+            if (res.success) {
+                if ($toast.length) {
+                    $toast.stop(true, true).fadeIn(150).delay(2500).fadeOut(600);
+                }
+            } else {
+                alert(res.message || 'Error updating series order');
+            }
+        })
+        .catch(function(err) {
+            if ($spinner.length) $spinner.hide();
+            console.error('Reorder error:', err);
+            alert('Network error while saving series order');
+        });
+    }
 
     // ── Bulk Delete Logic ─────────────────────────────────────────
     $('#bulkDeleteContainer').html(

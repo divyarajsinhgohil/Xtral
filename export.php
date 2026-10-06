@@ -14,7 +14,7 @@ include __DIR__ . '/includes/header.php';
 
   <section class="section">
     <div class="container split">
-      <div class="visual" data-reveal><img src="assets/img/faucet_precision.png" alt="X-Tral craftsmanship"></div>
+      <div class="visual" data-reveal><img src="assets/img/faucet_precision.webp" alt="X-Tral craftsmanship" loading="lazy" decoding="async"></div>
       <div data-reveal>
         <span class="eyebrow">Why export with X-Tral</span>
         <h2 style="font-size:clamp(2rem,4vw,2.8rem);">A partner built for scale</h2>
@@ -36,7 +36,7 @@ include __DIR__ . '/includes/header.php';
       <span class="eyebrow">Start a conversation</span>
       <h2 style="font-size:clamp(1.8rem,4vw,2.4rem);margin-bottom:12px;">Ready to partner with us?</h2>
       <p class="muted" style="max-width:520px;margin:0 auto 28px;">Tell us about your market, order volume and products of interest — our export desk will get back to you.</p>
-      <a href="contact.php" class="btn btn--gold">Contact Us <span class="ar">→</span></a>
+      <a href="contact" class="btn btn--gold">Contact Us <span class="ar">→</span></a>
     </div>
   </section>
 

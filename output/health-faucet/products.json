@@ -1,0 +1,74 @@
+[
+  {
+    "name": "POLO HEALTH FAUCET",
+    "code": "HF-270022",
+    "price": 1499,
+    "spec": "Brass with 1 mtr SS flexible pipe and ABS wall hook.",
+    "image": "C:\\xampp\\htdocs\\Xtral\\output\\health-faucet\\HF-270022.jpg",
+    "order": 1
+  },
+  {
+    "name": "ELISTA HEALTH FAUCET",
+    "code": "HF-270020",
+    "price": 1575,
+    "spec": "Brass with 1 mtr SS flexible pipe and ABS wall hook.",
+    "image": "C:\\xampp\\htdocs\\Xtral\\output\\health-faucet\\HF-270020.jpg",
+    "order": 2
+  },
+  {
+    "name": "EVA HEALTH FAUCET",
+    "code": "HF-270081",
+    "price": 550,
+    "spec": "ABS with 1.50 mtr PVC pipe and wall hook.",
+    "image": "C:\\xampp\\htdocs\\Xtral\\output\\health-faucet\\HF-270081.jpg",
+    "order": 3
+  },
+  {
+    "name": "SHONE HEALTH FAUCET",
+    "code": "HF-270090",
+    "price": 799,
+    "spec": "ABS with 1 mtr SS flexible pipe and ABS wall hook.",
+    "image": "C:\\xampp\\htdocs\\Xtral\\output\\health-faucet\\HF-270090.jpg",
+    "order": 4
+  },
+  {
+    "name": "EDGE HEALTH FAUCET",
+    "code": "HF-270083",
+    "price": 450,
+    "spec": "ABS with 1.50 mtr PVC pipe and wall hook.",
+    "image": "C:\\xampp\\htdocs\\Xtral\\output\\health-faucet\\HF-270083.jpg",
+    "order": 5
+  },
+  {
+    "name": "CORA HEALTH FAUCET",
+    "code": "HF-270092",
+    "price": 699,
+    "spec": "ABS with 1 mtr SS flexible pipe and ABS wall hook.",
+    "image": "C:\\xampp\\htdocs\\Xtral\\output\\health-faucet\\HF-270092.jpg",
+    "order": 6
+  },
+  {
+    "name": "PANTER HEALTH FAUCET",
+    "code": "HF-270088",
+    "price": 599,
+    "spec": "ABS with 1.50 mtr PVC pipe and wall hook.",
+    "image": "C:\\xampp\\htdocs\\Xtral\\output\\health-faucet\\HF-270088.jpg",
+    "order": 7
+  },
+  {
+    "name": "PRO HEALTH FAUCET",
+    "code": "HF-270010",
+    "price": 450,
+    "spec": "ABS with 1.50 mtr PVC pipe and wall hook.",
+    "image": "C:\\xampp\\htdocs\\Xtral\\output\\health-faucet\\HF-270010.jpg",
+    "order": 8
+  },
+  {
+    "name": "JACK HEALTH FAUCET",
+    "code": "HF-270025",
+    "price": 480,
+    "spec": "ABS with 1.50 mtr PVC pipe and wall hook.",
+    "image": "C:\\xampp\\htdocs\\Xtral\\output\\health-faucet\\HF-270025.jpg",
+    "order": 9
+  }
+]

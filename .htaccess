@@ -1,0 +1,98 @@
+Options -Indexes
+RewriteEngine On
+
+# 1. Exclude xadmin directory and web API completely
+RewriteCond %{REQUEST_URI} (?:^|/)xadmin(?:/|$) [NC]
+RewriteRule ^ - [L]
+
+# 2. Pretty URLs for catalogue QR codes: /qr/XT-1001 or /q/XT-1001 -> qr.php?c=XT-1001
+RewriteRule ^qr/([a-zA-Z0-9_-]+)/?$ qr.php?c=$1 [L,QSA]
+RewriteRule ^q/([a-zA-Z0-9_-]+)/?$ qr.php?c=$1 [L,QSA]
+
+# 2a. Clean Product URLs: /products/CODE or /product/CODE -> pd.php?id=CODE
+RewriteRule ^products/([^/]+)/?$ pd.php?id=$1 [L,QSA]
+RewriteRule ^product/([^/]+)/?$ pd.php?id=$1 [L,QSA]
+
+# 2b. Redirect legacy pd.php?id=CODE or pd?id=CODE to clean /products/CODE
+RewriteCond %{THE_REQUEST} ^[A-Z]{3,}\s(.*)/(?:pd\.php|pd)\?id=([^\s&]+) [NC]
+RewriteRule ^ %1/products/%2? [R=301,L,NE]
+
+# 2c. Redirect legacy qr.php?c=CODE or qr?c=CODE to clean /qr/CODE
+RewriteCond %{THE_REQUEST} ^[A-Z]{3,}\s(.*)/(?:qr\.php|qr)\?c=([^\s&]+) [NC]
+RewriteRule ^ %1/qr/%2? [R=301,L,NE]
+
+# 3. External 301 Redirect: Strip .php from browser URL bar (e.g. /products.php -> /products)
+RewriteCond %{THE_REQUEST} ^[A-Z]{3,}\s([^.?]+)\.php(?:[?\s]) [NC]
+RewriteRule ^ %1 [R=301,L,NE]
+
+# 4. Internal Rewrite: Route clean URLs to their corresponding .php file
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteCond %{REQUEST_FILENAME}.php -f
+RewriteRule ^(.*)$ $1.php [L,QSA]
+
+# ==============================================================================
+# PERFORMANCE OPTIMIZATIONS
+# ==============================================================================
+
+# Enable Gzip / Deflate Compression for text, CSS, JS, JSON, XML, SVG, Fonts
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE text/plain
+  AddOutputFilterByType DEFLATE text/html
+  AddOutputFilterByType DEFLATE text/xml
+  AddOutputFilterByType DEFLATE text/css
+  AddOutputFilterByType DEFLATE text/javascript
+  AddOutputFilterByType DEFLATE application/xml
+  AddOutputFilterByType DEFLATE application/xhtml+xml
+  AddOutputFilterByType DEFLATE application/rss+xml
+  AddOutputFilterByType DEFLATE application/javascript
+  AddOutputFilterByType DEFLATE application/x-javascript
+  AddOutputFilterByType DEFLATE application/json
+  AddOutputFilterByType DEFLATE application/vnd.ms-fontobject
+  AddOutputFilterByType DEFLATE application/x-font-ttf
+  AddOutputFilterByType DEFLATE application/x-font-opentype
+  AddOutputFilterByType DEFLATE font/opentype
+  AddOutputFilterByType DEFLATE font/ttf
+  AddOutputFilterByType DEFLATE font/eot
+  AddOutputFilterByType DEFLATE font/otf
+  AddOutputFilterByType DEFLATE image/svg+xml
+  AddOutputFilterByType DEFLATE image/x-icon
+</IfModule>
+
+# Browser Caching Headers (Leverage Browser Cache)
+<IfModule mod_expires.c>
+  ExpiresActive On
+  ExpiresDefault "access plus 1 month"
+  ExpiresByType text/html "access plus 0 seconds"
+  ExpiresByType text/css "access plus 1 year"
+  ExpiresByType application/javascript "access plus 1 year"
+  ExpiresByType text/javascript "access plus 1 year"
+  ExpiresByType image/webp "access plus 1 year"
+  ExpiresByType image/png "access plus 1 year"
+  ExpiresByType image/jpeg "access plus 1 year"
+  ExpiresByType image/jpg "access plus 1 year"
+  ExpiresByType image/gif "access plus 1 year"
+  ExpiresByType image/svg+xml "access plus 1 year"
+  ExpiresByType image/x-icon "access plus 1 year"
+  ExpiresByType font/woff "access plus 1 year"
+  ExpiresByType font/woff2 "access plus 1 year"
+  ExpiresByType application/font-woff2 "access plus 1 year"
+  ExpiresByType video/mp4 "access plus 1 month"
+  ExpiresByType video/webm "access plus 1 month"
+</IfModule>
+
+<IfModule mod_headers.c>
+  # 1 year cache for static assets with cache buster query params
+  <FilesMatch "\.(ico|jpe?g|png|gif|webp|svg|css|js|woff2?|ttf|otf)$">
+    Header set Cache-Control "max-age=31536000, public"
+  </FilesMatch>
+
+  # CORS: Allow PDF files and JS workers to be loaded from any origin
+  # Required for PDF.js to load PDFs in a Web Worker context on live server
+  <FilesMatch "\.(pdf|js|worker\.js)$">
+    Header set Access-Control-Allow-Origin "*"
+    Header set Access-Control-Allow-Methods "GET, HEAD, OPTIONS"
+    Header set Access-Control-Allow-Headers "Content-Type, Range"
+    Header set Access-Control-Expose-Headers "Accept-Ranges, Content-Length, Content-Range"
+  </FilesMatch>
+</IfModule>
+

@@ -1,5 +1,8 @@
 User-agent: *
 Allow: /
+# Product images live under xadmin/uploads — link previews (WhatsApp, Facebook)
+# and Google Images need them; the rest of the admin panel stays blocked.
+Allow: /xadmin/uploads/
 Disallow: /xadmin/
 
 Sitemap: https://x-tral.com/sitemap.xml

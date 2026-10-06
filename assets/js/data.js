@@ -80,8 +80,13 @@ function xtralMapProduct(p) {
         name: v.name,
         code: v.code,
         price: v.price,
+        price_zone2: v.price_zone2 || null,
+        price_label_1: v.price_label_1 || p.price_label_1 || null,
+        price_label_2: v.price_label_2 || p.price_label_2 || null,
         val: v.color_hex || '#d7dde0',
-        img: v.image || null
+        textureImg: v.texture_image || null,
+        img: v.image || null,
+        sizes: Array.isArray(v.sizes) ? v.sizes : []
       }))
     };
   }
@@ -92,15 +97,22 @@ function xtralMapProduct(p) {
   const firstVariantPrice = variants && variants.items.length
     ? variants.items.find(v => v.price)?.price
     : null;
+  const firstVariantPrice2 = variants && variants.items.length
+    ? variants.items.find(v => v.price_zone2)?.price_zone2
+    : null;
 
   return {
     id: String(p.id),
     cat: String(p.category_id),
     subId: p.sub_category_id != null ? String(p.sub_category_id) : null,
     seriesId: p.series_id != null ? String(p.series_id) : null,
+    series: p.series || '',
     name: p.name,
     code: p.code || '—',
     price: p.price || firstVariantPrice || null,
+    price_zone2: p.price_zone2 || firstVariantPrice2 || null,
+    price_label_1: p.price_label_1 || null,
+    price_label_2: p.price_label_2 || null,
     tag: p.is_new_arrival ? 'New' : null,
     img: p.image || '',
     imgs: p.images || (p.image ? [p.image] : []),
@@ -115,7 +127,8 @@ function xtralMapProduct(p) {
       : [],
     hsn: p.hsn_code || '—',
     video: p.video || null,
-    dimensions: p.dimensions || ''
+    dimensions: p.dimensions || '',
+    displayOrder: p.display_order != null ? Number(p.display_order) : 0
   };
 }
 
@@ -124,13 +137,18 @@ function xtralMapProduct(p) {
    by webapi/site.php. Header uses `.brand img`; footer gets the extra
    `.footer-logo` class so the CSS inverts it to white. */
 function xtralApplyBranding(site) {
-  if (!site || !site.logo) return;
   document.querySelectorAll('.site-header .brand, footer .brand').forEach(brand => {
-    const img = document.createElement('img');
-    img.src = site.logo;
-    img.alt = site.name || 'X-Tral';
-    if (brand.closest('footer')) img.classList.add('footer-logo');
-    brand.replaceChildren(img);
+    if (site && site.logo) {
+      // Admin has uploaded a logo — replace the brand with it
+      const img = document.createElement('img');
+      img.src = site.logo;
+      img.alt = (site && site.name) || 'X-Tral';
+      if (brand.closest('footer')) img.classList.add('footer-logo');
+      brand.replaceChildren(img);
+    } else {
+      // No logo configured — reveal the CSS-drawn fallback brand
+      brand.classList.add('brand--fallback');
+    }
   });
 }
 
@@ -189,29 +207,76 @@ function xtralApplySiteInfo(site) {
   }
 }
 
+const XTRAL_CACHE_TTL = 5 * 60 * 1000; // 5 minutes cache
+
+function xtralGetStorage(key) {
+  try {
+    const raw = sessionStorage.getItem(key);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch (e) {
+    return null;
+  }
+}
+
+function xtralSetStorage(key, val) {
+  try {
+    sessionStorage.setItem(key, JSON.stringify({ time: Date.now(), data: val }));
+  } catch (e) {
+    // Quota exceeded or disabled, silently ignore
+  }
+}
+
+// Clear any stale catalogue cache that is missing required price_label fields
+try {
+  const c = sessionStorage.getItem('xtral_catalogue');
+  if (c && !c.includes('price_label_1')) {
+    sessionStorage.removeItem('xtral_catalogue');
+  }
+} catch (e) {}
+
 (async function xtralLoadSite() {
+  if (window.XTRAL_PRICE_LABEL_1) {
+    if (!window.XTRAL_SITE) window.XTRAL_SITE = {};
+    window.XTRAL_SITE.price_label_1 = window.XTRAL_PRICE_LABEL_1;
+    window.XTRAL_SITE.price_label_2 = window.XTRAL_PRICE_LABEL_2;
+  }
+
+  const cached = xtralGetStorage('xtral_site');
+  if (cached && cached.data) {
+    window.XTRAL_SITE = Object.assign({}, cached.data, window.XTRAL_SITE || {});
+    if (window.XTRAL_PRICE_LABEL_1) window.XTRAL_SITE.price_label_1 = window.XTRAL_PRICE_LABEL_1;
+    if (window.XTRAL_PRICE_LABEL_2) window.XTRAL_SITE.price_label_2 = window.XTRAL_PRICE_LABEL_2;
+    xtralApplyBranding(window.XTRAL_SITE);
+    xtralApplySiteInfo(window.XTRAL_SITE);
+  }
+
   try {
     const site = await xtralApiGet('site.php');
-    window.XTRAL_SITE = site;
-    xtralApplyBranding(site);
-    xtralApplySiteInfo(site);
+    if (site) {
+      if (site.price_label_1 && ['fabio', 'fabio:', 'ped', 'ped:'].includes(String(site.price_label_1).toLowerCase().trim())) {
+        site.price_label_1 = 'Zone 1';
+      }
+      if (site.price_label_2 && ['fabio', 'fabio:', 'ped', 'ped:'].includes(String(site.price_label_2).toLowerCase().trim())) {
+        site.price_label_2 = 'Zone 2';
+      }
+      window.XTRAL_SITE = Object.assign({}, window.XTRAL_SITE || {}, site);
+      if (window.XTRAL_PRICE_LABEL_1) window.XTRAL_SITE.price_label_1 = window.XTRAL_PRICE_LABEL_1;
+      if (window.XTRAL_PRICE_LABEL_2) window.XTRAL_SITE.price_label_2 = window.XTRAL_PRICE_LABEL_2;
+      xtralSetStorage('xtral_site', window.XTRAL_SITE);
+      xtralApplyBranding(window.XTRAL_SITE);
+      xtralApplySiteInfo(window.XTRAL_SITE);
+    }
   } catch (err) {
-    // No logo configured or API unreachable — keep the placeholder text.
+    if (!window.XTRAL_SITE) {
+      xtralApplyBranding(null);
+    }
   }
 })();
 
-/* ---- Load everything, then render the page ---- */
-(async function xtralLoadData() {
-  try {
-    const [cats, subs, series, prods, banners] = await Promise.all([
-      xtralApiGet('categories.php'),
-      xtralApiGet('sub_categories.php'),
-      xtralApiGet('series.php'),
-      xtralApiGet('products.php'),
-      xtralApiGet('banners.php')
-    ]);
-
-    XTRAL_BANNERS = banners.map(b => ({
+function xtralPopulateData(payload) {
+  if (payload.banners) {
+    XTRAL_BANNERS = payload.banners.map(b => ({
       id: b.id,
       title: b.title || '',
       img: b.image,
@@ -219,23 +284,29 @@ function xtralApplySiteInfo(site) {
       type: b.banner_type || 'image',
       link: b.link || null
     }));
+  }
 
-    XTRAL_CATEGORIES = cats.map(c => ({
+  if (payload.cats) {
+    XTRAL_CATEGORIES = payload.cats.map(c => ({
       id: String(c.id),
       name: c.name,
       img: c.image || '',
       blurb: c.description || ''
     }));
+  }
 
-    XTRAL_SUBCATS = subs.map(s => ({
+  if (payload.subs) {
+    XTRAL_SUBCATS = payload.subs.map(s => ({
       id: String(s.id),
       cat: String(s.category_id),
       name: s.name,
       img: s.image || '',
       blurb: s.description || ''
     }));
+  }
 
-    XTRAL_SERIES = series.map(s => ({
+  if (payload.series) {
+    XTRAL_SERIES = payload.series.map(s => ({
       id: String(s.id),
       cat: String(s.category_id),
       sub: s.sub_category_id != null ? String(s.sub_category_id) : null,
@@ -244,16 +315,67 @@ function xtralApplySiteInfo(site) {
       blurb: s.description || '',
       is_new_arrival: !!s.is_new_arrival
     }));
-
-    XTRAL_PRODUCTS = prods.map(xtralMapProduct);
-  } catch (err) {
-    console.error('X-tral: could not load data from API —', err);
   }
 
-  // main.js defines this — renders categories, products, details, etc.
-  // Fallback: if main.js hasn't loaded yet, try again when the DOM is ready.
+  if (payload.prods) {
+    XTRAL_PRODUCTS = payload.prods.map(xtralMapProduct);
+    if (window.XTRAL_CURRENT_PROD) {
+      const curId = String(window.XTRAL_CURRENT_PROD.id || '');
+      const curCode = String(window.XTRAL_CURRENT_PROD.code || '').replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+      const match = XTRAL_PRODUCTS.find(x => 
+        (curId && String(x.id) === curId) || 
+        (curCode && x.code && String(x.code).replace(/[^a-zA-Z0-9]/g, '').toLowerCase() === curCode)
+      );
+      if (match) {
+        if (window.XTRAL_CURRENT_PROD.price_label_1 && (!match.price_label_1 || window.XTRAL_CURRENT_PROD.price_label_1 !== 'Zone 1')) {
+          match.price_label_1 = window.XTRAL_CURRENT_PROD.price_label_1;
+        }
+        if (window.XTRAL_CURRENT_PROD.price_label_2 && (!match.price_label_2 || window.XTRAL_CURRENT_PROD.price_label_2 !== 'Zone 2')) {
+          match.price_label_2 = window.XTRAL_CURRENT_PROD.price_label_2;
+        }
+      }
+    }
+  }
+}
+
+/* ---- Load everything, then render the page ---- */
+(async function xtralLoadData() {
   const notify = () => { if (typeof window.XTRAL_RENDER === 'function') window.XTRAL_RENDER(); };
+
+  const cached = xtralGetStorage('xtral_catalogue');
+  let hasRendered = false;
+
+  if (cached && cached.data) {
+    xtralPopulateData(cached.data);
+    hasRendered = true;
+    if (typeof window.XTRAL_RENDER === 'function') notify();
+    else if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', notify);
+    else setTimeout(notify, 50);
+  }
+
+  /* Fetch each endpoint independently so one failure does not blank the
+     whole front page — banners, products, categories etc. each survive
+     on their own even if a sibling call throws. */
+  const safe = (promise, name) =>
+    promise.catch(err => {
+      console.warn(`X-tral: ${name} failed —`, err.message || err);
+      return null; // null = "no data, keep going"
+    });
+
+  const [cats, subs, series, prods, banners] = await Promise.all([
+    safe(xtralApiGet('categories.php'),    'categories'),
+    safe(xtralApiGet('sub_categories.php'),'sub_categories'),
+    safe(xtralApiGet('series.php'),        'series'),
+    safe(xtralApiGet('products.php'),      'products'),
+    safe(xtralApiGet('banners.php'),       'banners'),
+  ]);
+
+  const payload = { cats, subs, series, prods, banners };
+  xtralPopulateData(payload);
+  xtralSetStorage('xtral_catalogue', payload);
+
+  // main.js defines this — renders categories, products, details, etc.
   if (typeof window.XTRAL_RENDER === 'function') notify();
   else if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', notify);
-  else setTimeout(notify, 200);
+  else setTimeout(notify, 50);
 })();

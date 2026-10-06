@@ -29,6 +29,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         updateSetting('social_instagram', trim($_POST['social_instagram'] ?? ''));
         updateSetting('social_youtube', trim($_POST['social_youtube'] ?? ''));
         updateSetting('social_twitter', trim($_POST['social_twitter'] ?? ''));
+        updateSetting('price_label_1', trim($_POST['price_label_1'] ?? 'Zone 1') ?: 'Zone 1');
+        updateSetting('price_label_2', trim($_POST['price_label_2'] ?? 'Zone 2') ?: 'Zone 2');
 
         // Handle logo upload — one image, replaces the previous file
         if (!empty($_FILES['company_logo']['name'])) {
@@ -92,6 +94,8 @@ $socialFacebook  = getSetting('social_facebook') ?? '';
 $socialInstagram = getSetting('social_instagram') ?? '';
 $socialYoutube   = getSetting('social_youtube') ?? '';
 $socialTwitter   = getSetting('social_twitter') ?? '';
+$priceLabel1     = getPriceLabel1();
+$priceLabel2     = getPriceLabel2();
 
 $additionalCSS = '<link href="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.snow.css" rel="stylesheet">';
 
@@ -275,6 +279,30 @@ include dirname(dirname(__DIR__)) . '/includes/header.php';
                         </div>
                         <div class="form-text text-muted">
                             <i class="fas fa-info-circle me-1"></i>Links left blank will automatically be hidden from the website footer.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section: Dual Price Titles -->
+                <div class="card mb-4">
+                    <div class="card-header bg-white">
+                        <h5 class="mb-0"><i class="fas fa-tags me-2 text-primary"></i>Product Dual Pricing Titles</h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted small mb-3">Set custom names/titles for the two product prices (e.g., <strong>Zone 1</strong> &amp; <strong>Zone 2</strong>, <strong>Price 1</strong> &amp; <strong>Price 2</strong>, <strong>MRP</strong> &amp; <strong>Offer Price</strong>, <strong>White</strong> &amp; <strong>Colour</strong>, etc.). These names will display on product edit forms and the website.</p>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="price_label_1" class="form-label">Price 1 Title / Name</label>
+                                <input type="text" class="form-control" id="price_label_1" name="price_label_1"
+                                       value="<?= htmlspecialchars($priceLabel1) ?>"
+                                       placeholder="e.g., Zone 1">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="price_label_2" class="form-label">Price 2 Title / Name</label>
+                                <input type="text" class="form-control" id="price_label_2" name="price_label_2"
+                                       value="<?= htmlspecialchars($priceLabel2) ?>"
+                                       placeholder="e.g., Zone 2">
+                            </div>
                         </div>
                     </div>
                 </div>

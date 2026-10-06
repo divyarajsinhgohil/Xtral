@@ -1,11 +1,13 @@
 <?php
 require_once dirname(__DIR__, 3) . '/config/db.php';
 requireLogin();
+require_once dirname(__DIR__, 3) . '/includes/catalogue_product_hierarchy.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     try {
         $pdo = getDBConnection();
+        ensureCatalogueProductHierarchySchema($pdo);
         $pdo->beginTransaction();
 
         // 1. Common Inputs
@@ -13,6 +15,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $name = sanitize($_POST['name'] ?? '');
         $specifications = $_POST['specifications'] ?? ''; // Allow HTML for rich text
         $display_order = (int)($_POST['display_order'] ?? 0);
+        if ($display_order <= 0) {
+            $maxOrder = fetchOne("SELECT MAX(display_order) as max_order FROM catalogue_products");
+            $display_order = ($maxOrder['max_order'] ?? 0) + 1;
+        }
         $is_active = isset($_POST['is_active']) ? 1 : 0;
         $is_new_arrival = isset($_POST['is_new_arrival']) ? 1 : 0;
         $variant_type = $_POST['variant_type'] ?? 'none'; // none, size, color
@@ -34,10 +40,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (isset($_POST['variants']['size'])) unset($_POST['variants']['size']);
         }
 
-        // 2. Validate Common
-        if (empty($series_id) || empty($name)) {
-            throw new Exception("Series and Product Name are required.");
+        // 2. Validate Common & Resolve Classification
+        if (empty($name)) {
+            throw new Exception("Product Name is required.");
         }
+
+        [$category_id, $sub_category_id, $series_id] = resolveCatalogueProductClassification(
+            $pdo, $_POST['category_id'] ?? null, $_POST['sub_category_id'] ?? null, $series_id
+        );
 
         // 3. Prepare Main Product Data
         $mainCode = null;
@@ -53,10 +63,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             
             // Check Main Code Uniqueness
-            $stmtCheck = $pdo->prepare("SELECT id FROM catalogue_products WHERE code = ? AND series_id = ? LIMIT 1");
-            $stmtCheck->execute([$mainCode, $series_id]);
+            if ($series_id !== null) {
+                $stmtCheck = $pdo->prepare("SELECT id FROM catalogue_products WHERE code = ? AND series_id = ? LIMIT 1");
+                $stmtCheck->execute([$mainCode, $series_id]);
+            } else {
+                $stmtCheck = $pdo->prepare("SELECT id FROM catalogue_products WHERE code = ? AND category_id = ? AND series_id IS NULL LIMIT 1");
+                $stmtCheck->execute([$mainCode, $category_id]);
+            }
             if ($stmtCheck->fetchColumn()) {
-                throw new Exception("Product Code '$mainCode' already exists in this series.");
+                throw new Exception("Product Code '$mainCode' already exists in this category/series.");
             }
         }
 
@@ -77,18 +92,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $videoUrl = sanitize($_POST['video_url_link']);
         }
 
-        $sql = "INSERT INTO catalogue_products (series_id, name, code, hsn_code, price, price_zone2, dimensions, specifications, display_order, is_new_arrival, is_active, variant_type, colour_label, video_url)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        $price_label_1 = trim($_POST['price_label_1'] ?? '') ?: null;
+        $price_label_2 = trim($_POST['price_label_2'] ?? '') ?: null;
 
+        $valL1 = $price_label_1 !== '' ? $price_label_1 : null;
+        $valL2 = $price_label_2 !== '' ? $price_label_2 : null;
+
+        $sql = "INSERT INTO catalogue_products (category_id, sub_category_id, series_id, name, code, hsn_code, price, price_zone2, price_label_1, price_label_2, dimensions, specifications, display_order, is_new_arrival, is_active, variant_type, colour_label, video_url)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         $stmt = $pdo->prepare($sql);
-        $stmt->execute([$series_id, $name, $mainCode, $hsn_code, $mainPrice, $price_zone2, $mainDimensions, $specifications, $display_order, $is_new_arrival, $is_active, $variant_type, $colour_label, $videoUrl]);
+        $stmt->execute([$category_id, $sub_category_id, $series_id, $name, $mainCode, $hsn_code, $mainPrice, $price_zone2, $valL1, $valL2, $mainDimensions, $specifications, $display_order, $is_new_arrival, $is_active, $variant_type, $colour_label, $videoUrl]);
         $product_id = $pdo->lastInsertId();
+
+        if (!empty($price_label_1)) updateSetting('prod_price_label_1_' . $product_id, $price_label_1);
+        if (!empty($price_label_2)) updateSetting('prod_price_label_2_' . $product_id, $price_label_2);
 
         // 5. Handle Main Gallery Images
         if (isset($_FILES['images'])) {
             $files = $_FILES['images'];
             $fileCount = min(count($files['name']), 5); // Hard limit: maximum 5 total images
+
+            $primary_image = $_POST['primary_image'] ?? null;
+            $newPrimaryIndex = 0;
+            if (is_string($primary_image) && strpos($primary_image, 'new_') === 0) {
+                $newPrimaryIndex = (int)substr($primary_image, 4);
+            }
             
+            $insertedCount = 0;
             for ($i = 0; $i < $fileCount; $i++) {
                 if ($files['error'][$i] === UPLOAD_ERR_OK) {
                     $file = [
@@ -102,11 +132,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $uploadResult = handleFileUpload($file, 'catalogue/products', ['image/jpeg', 'image/png', 'image/webp']);
 
                     if ($uploadResult['success']) {
-                        $is_primary = ($i === 0) ? 1 : 0;
+                        $is_primary = ($i === $newPrimaryIndex) ? 1 : 0;
                         $imgSql = "INSERT INTO catalogue_product_images (product_id, image_url, is_primary, display_order) VALUES (?, ?, ?, ?)";
                         $imgStmt = $pdo->prepare($imgSql);
                         $imgStmt->execute([$product_id, $uploadResult['filename'], $is_primary, $i]);
+                        $insertedCount++;
                     }
+                }
+            }
+
+            // Ensure at least one image is marked as primary
+            if ($insertedCount > 0) {
+                $hasPrimary = fetchOne("SELECT id FROM catalogue_product_images WHERE product_id = ? AND is_primary = 1 LIMIT 1", [$product_id]);
+                if (!$hasPrimary) {
+                    $firstImg = fetchOne("SELECT id FROM catalogue_product_images WHERE product_id = ? ORDER BY id ASC LIMIT 1", [$product_id]);
+                    if ($firstImg) execute("UPDATE catalogue_product_images SET is_primary = 1 WHERE id = ?", [$firstImg['id']]);
                 }
             }
         }
@@ -156,11 +196,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 $vPriceZ2 = !empty($variantData['price_zone2']) ? (int)$variantData['price_zone2'] : null;
 
+                $vSizeDimensions = null;
+                if ($variant_type === 'color' && !empty($variantData['sizes']) && is_array($variantData['sizes'])) {
+                    $cleanedSizes = [];
+                    foreach ($variantData['sizes'] as $sz) {
+                        $sDim = trim(sanitize($sz['dimension'] ?? ''));
+                        if ($sDim !== '') {
+                            $cleanedSizes[] = [
+                                'dimension' => $sDim,
+                                'price' => (isset($sz['price']) && $sz['price'] !== '') ? (float)$sz['price'] : null,
+                                'price_zone2' => (isset($sz['price_zone2']) && $sz['price_zone2'] !== '') ? (float)$sz['price_zone2'] : null,
+                            ];
+                        }
+                    }
+                    if (!empty($cleanedSizes)) {
+                        $vSizeDimensions = json_encode(array_values($cleanedSizes));
+                    }
+                }
+
                 // Insert Variant
-                $vSql = "INSERT INTO catalogue_product_variants (product_id, name, code, price, price_zone2, attribute_value, color_id, image_url, display_order, is_active) 
-                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)";
+                $vSql = "INSERT INTO catalogue_product_variants (product_id, name, code, price, price_zone2, attribute_value, color_id, image_url, size_dimensions, display_order, is_active) 
+                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)";
                 $vStmt = $pdo->prepare($vSql);
-                $vStmt->execute([$product_id, $vName, $vCode, $vPrice, $vPriceZ2, $attrValue, $colorId, $vImageUrl, $index]);
+                $vStmt->execute([$product_id, $vName, $vCode, $vPrice, $vPriceZ2, $attrValue, $colorId, $vImageUrl, $vSizeDimensions, $index]);
             }
         }
 

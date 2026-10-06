@@ -1,11 +1,13 @@
 <?php
 require_once dirname(__DIR__, 3) . '/config/db.php';
 requireLogin();
+require_once dirname(__DIR__, 3) . '/includes/catalogue_product_hierarchy.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     try {
         $pdo = getDBConnection();
+        ensureCatalogueProductHierarchySchema($pdo);
         $pdo->beginTransaction();
 
         $id = $_POST['id'] ?? null;
@@ -14,17 +16,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         // 1. Fetch Current Product State (to verify type)
-        $currentProduct = fetchOne("SELECT variant_type FROM catalogue_products WHERE id = ?", [$id]);
+        $currentProduct = fetchOne("SELECT * FROM catalogue_products WHERE id = ?", [$id]);
         if (!$currentProduct) {
             throw new Exception("Product not found.");
         }
-        $variant_type = $currentProduct['variant_type'];
+        $oldVariantType = $currentProduct['variant_type'] ?? 'none';
+
+        // Variant type from form
+        $variant_type = sanitize($_POST['variant_type'] ?? $oldVariantType);
+        if (!in_array($variant_type, ['none', 'size', 'color'])) {
+            $variant_type = 'none';
+        }
 
         // 2. Common Inputs
         $series_id = (int)($_POST['series_id'] ?? 0);
         $name = sanitize($_POST['name'] ?? '');
         $specifications = $_POST['specifications'] ?? ''; // Allow HTML for rich text
         $display_order = (int)($_POST['display_order'] ?? 0);
+        if ($display_order <= 0) {
+            $maxOrder = fetchOne("SELECT MAX(display_order) as max_order FROM catalogue_products");
+            $display_order = ($maxOrder['max_order'] ?? 0) + 1;
+        }
         $is_active = isset($_POST['is_active']) ? 1 : 0;
         $is_new_arrival = isset($_POST['is_new_arrival']) ? 1 : 0;
         $colour_label_raw = $_POST['colour_label'] ?? 'colour';
@@ -34,34 +46,64 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $primary_image_id = $_POST['primary_image'] ?? null;
         $delete_variants = $_POST['delete_variants'] ?? [];
 
-        if (empty($series_id) || empty($name)) {
-            throw new Exception("Series and Product Name are required.");
+        // 2b. Validate Common & Resolve Classification
+        if (empty($name)) {
+            throw new Exception("Product Name is required.");
         }
+
+        [$category_id, $sub_category_id, $series_id] = resolveCatalogueProductClassification(
+            $pdo, $_POST['category_id'] ?? null, $_POST['sub_category_id'] ?? null, $series_id
+        );
 
         // 3. Prepare Main Product Data
         $code = null;
         $price = 0;
-        $dimensions = sanitize($_POST['dimensions'] ?? '');
+        $priceZ2 = null;
+        $dimensions = ($variant_type === 'size') ? null : sanitize($_POST['dimensions'] ?? '');
+
+        $submittedCode = trim($_POST['code'] ?? '');
 
         if ($variant_type === 'none') {
-            $code = dashCode(sanitize($_POST['code'] ?? ''));
+            if ($submittedCode === '') {
+                 throw new Exception("Product Code is required for Simple Products.");
+            }
+            $code = dashCode(sanitize($submittedCode));
             $price = !empty($_POST['price']) ? (int)$_POST['price'] : 0;
             $priceZ2 = !empty($_POST['price_zone2']) ? (int)$_POST['price_zone2'] : null;
 
-            if (empty($code)) {
-                 throw new Exception("Product Code is required for Simple Products.");
-            }
-
             // Check Code Unique
-            $stmtCheck = $pdo->prepare("SELECT id FROM catalogue_products WHERE code = ? AND series_id = ? AND id != ? LIMIT 1");
-            $stmtCheck->execute([$code, $series_id, $id]);
+            if ($series_id !== null) {
+                $stmtCheck = $pdo->prepare("SELECT id FROM catalogue_products WHERE code = ? AND series_id = ? AND id != ? LIMIT 1");
+                $stmtCheck->execute([$code, $series_id, $id]);
+            } else {
+                $stmtCheck = $pdo->prepare("SELECT id FROM catalogue_products WHERE code = ? AND category_id = ? AND series_id IS NULL AND id != ? LIMIT 1");
+                $stmtCheck->execute([$code, $category_id, $id]);
+            }
             if ($stmtCheck->fetchColumn()) {
-                throw new Exception("Product Code '$code' already exists in this series.");
+                throw new Exception("Product Code '$code' already exists in this category/series.");
             }
         } else {
-             // For variant products, we can keep the existing code/price or set null.
-             // Since form fields are hidden, let's just not update them (or set to NULL if schema allows).
-             // We'll just update the common fields.
+            // For variant products, keep existing code or update if user entered/changed it
+            if ($submittedCode !== '') {
+                $code = dashCode(sanitize($submittedCode));
+                // Check Code Unique
+                if ($series_id !== null) {
+                    $stmtCheck = $pdo->prepare("SELECT id FROM catalogue_products WHERE code = ? AND series_id = ? AND id != ? LIMIT 1");
+                    $stmtCheck->execute([$code, $series_id, $id]);
+                } else {
+                    $stmtCheck = $pdo->prepare("SELECT id FROM catalogue_products WHERE code = ? AND category_id = ? AND series_id IS NULL AND id != ? LIMIT 1");
+                    $stmtCheck->execute([$code, $category_id, $id]);
+                }
+                if ($stmtCheck->fetchColumn()) {
+                    throw new Exception("Product Code '$code' already exists in this category/series.");
+                }
+            } else {
+                // Keep old code from DB if exists
+                $code = !empty($currentProduct['code']) ? $currentProduct['code'] : null;
+            }
+            // Preserve existing price if any
+            $price = (int)($currentProduct['price'] ?? 0);
+            $priceZ2 = $currentProduct['price_zone2'] ?? null;
         }
 
         // 4. Update Main Product
@@ -70,8 +112,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $hsn_code = trim($_POST['hsn_code'] ?? '') ?: null;
 
         // Fetch current video state
-        $oldProduct = fetchOne("SELECT video_url FROM catalogue_products WHERE id = ?", [$id]);
-        $oldVideoUrl = $oldProduct['video_url'] ?? null;
+        $oldVideoUrl = $currentProduct['video_url'] ?? null;
         $isOldVideoLocal = $oldVideoUrl && !preg_match('#^https?://#i', $oldVideoUrl);
 
         $delete_video = isset($_POST['delete_video']) && $_POST['delete_video'] == '1';
@@ -113,25 +154,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
-        if ($variant_type === 'none') {
-             $sql = "UPDATE catalogue_products
-                     SET series_id=?, name=?, code=?, hsn_code=?, price=?, price_zone2=?, dimensions=?, specifications=?, display_order=?, is_new_arrival=?, is_active=?, video_url=?
-                     WHERE id=?";
-             $params = [$series_id, $name, $code, $hsn_code, $price, $priceZ2, $dimensions, $specifications, $display_order, $is_new_arrival, $is_active, $newVideoVal, $id];
-        } elseif ($variant_type === 'size') {
-             $sql = "UPDATE catalogue_products
-                     SET series_id=?, name=?, hsn_code=?, specifications=?, display_order=?, is_new_arrival=?, is_active=?, video_url=?
-                     WHERE id=?";
-             $params = [$series_id, $name, $hsn_code, $specifications, $display_order, $is_new_arrival, $is_active, $newVideoVal, $id];
-        } else {
-             // color variants — keep dimensions + colour_label
-             $sql = "UPDATE catalogue_products
-                     SET series_id=?, name=?, hsn_code=?, dimensions=?, specifications=?, display_order=?, is_new_arrival=?, is_active=?, colour_label=?, video_url=?
-                     WHERE id=?";
-             $params = [$series_id, $name, $hsn_code, $dimensions, $specifications, $display_order, $is_new_arrival, $is_active, $colour_label, $newVideoVal, $id];
+        $price_label_1 = trim($_POST['price_label_1'] ?? '');
+        $price_label_2 = trim($_POST['price_label_2'] ?? '');
+
+        // Guaranteed storage via settings
+        updateSetting('prod_price_label_1_' . $id, $price_label_1);
+        updateSetting('prod_price_label_2_' . $id, $price_label_2);
+
+        $valL1 = $price_label_1 !== '' ? $price_label_1 : null;
+        $valL2 = $price_label_2 !== '' ? $price_label_2 : null;
+
+        try {
+            $sql = "UPDATE catalogue_products
+                    SET category_id=?, sub_category_id=?, series_id=?, name=?, code=?, hsn_code=?, price=?, price_zone2=?, price_label_1=?, price_label_2=?, dimensions=?, specifications=?, display_order=?, is_new_arrival=?, is_active=?, variant_type=?, colour_label=?, video_url=?
+                    WHERE id=?";
+            $params = [$category_id, $sub_category_id, $series_id, $name, $code, $hsn_code, $price, $priceZ2, $valL1, $valL2, $dimensions, $specifications, $display_order, $is_new_arrival, $is_active, $variant_type, $colour_label, $newVideoVal, $id];
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute($params);
+        } catch (\Throwable $t) {
+            // Fallback in case price_label columns don't exist yet
+            $sql = "UPDATE catalogue_products
+                    SET category_id=?, sub_category_id=?, series_id=?, name=?, code=?, hsn_code=?, price=?, price_zone2=?, dimensions=?, specifications=?, display_order=?, is_new_arrival=?, is_active=?, variant_type=?, colour_label=?, video_url=?
+                    WHERE id=?";
+            $params = [$category_id, $sub_category_id, $series_id, $name, $code, $hsn_code, $price, $priceZ2, $dimensions, $specifications, $display_order, $is_new_arrival, $is_active, $variant_type, $colour_label, $newVideoVal, $id];
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute($params);
         }
-        $stmt = $pdo->prepare($sql);
-        $stmt->execute($params);
 
         // 5. Handle Gallery Images (Delete & Add)
         
@@ -151,6 +199,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $existingCount = (int)($existingCountRow['cnt'] ?? 0);
         $remainingQuota = max(0, 5 - $existingCount);
 
+        // Determine if primary image is chosen from newly uploaded files (e.g. "new_0", "new_1", ...)
+        $newPrimaryIndex = null;
+        if (is_string($primary_image_id) && strpos($primary_image_id, 'new_') === 0) {
+            $newPrimaryIndex = (int)substr($primary_image_id, 4);
+        }
+
+        // Reset existing primary flags if a primary selection was made
+        if ($newPrimaryIndex !== null || ($primary_image_id && is_numeric($primary_image_id))) {
+            execute("UPDATE catalogue_product_images SET is_primary = 0 WHERE product_id = ?", [$id]);
+        }
+
+        $newPrimarySet = false;
         // 5b. Add
         if (isset($_FILES['images']) && $remainingQuota > 0) {
              $files = $_FILES['images'];
@@ -166,25 +226,54 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                       ];
                       $uploadResult = handleFileUpload($file, 'catalogue/products', ['image/jpeg', 'image/png', 'image/webp']);
                       if ($uploadResult['success']) {
-                          execute("INSERT INTO catalogue_product_images (product_id, image_url, is_primary, display_order) VALUES (?, ?, 0, 99)", [$id, $uploadResult['filename']]);
+                          $is_primary = ($newPrimaryIndex !== null && $i === $newPrimaryIndex) ? 1 : 0;
+                          if ($is_primary) {
+                              $newPrimarySet = true;
+                          }
+                          execute("INSERT INTO catalogue_product_images (product_id, image_url, is_primary, display_order) VALUES (?, ?, ?, 99)", [$id, $uploadResult['filename'], $is_primary]);
                       }
                   }
              }
         }
 
         // 5c. Set Primary
-        execute("UPDATE catalogue_product_images SET is_primary = 0 WHERE product_id = ?", [$id]);
-        if ($primary_image_id && !in_array($primary_image_id, $delete_images)) {
-            execute("UPDATE catalogue_product_images SET is_primary = 1 WHERE id = ? AND product_id = ?", [$primary_image_id, $id]);
-        } else {
-            $firstImg = fetchOne("SELECT id FROM catalogue_product_images WHERE product_id = ? ORDER BY id ASC LIMIT 1", [$id]);
-            if ($firstImg) execute("UPDATE catalogue_product_images SET is_primary = 1 WHERE id = ?", [$firstImg['id']]);
+        if (!$newPrimarySet) {
+            if ($primary_image_id && is_numeric($primary_image_id) && !in_array($primary_image_id, $delete_images)) {
+                execute("UPDATE catalogue_product_images SET is_primary = 1 WHERE id = ? AND product_id = ?", [$primary_image_id, $id]);
+            } else {
+                $hasPrimary = fetchOne("SELECT id FROM catalogue_product_images WHERE product_id = ? AND is_primary = 1 LIMIT 1", [$id]);
+                if (!$hasPrimary) {
+                    $firstImg = fetchOne("SELECT id FROM catalogue_product_images WHERE product_id = ? ORDER BY id ASC LIMIT 1", [$id]);
+                    if ($firstImg) execute("UPDATE catalogue_product_images SET is_primary = 1 WHERE id = ?", [$firstImg['id']]);
+                }
+            }
+        }
+
+        // 5d. Handle Image Display Reordering
+        if (!empty($_POST['image_order']) && is_array($_POST['image_order'])) {
+            foreach ($_POST['image_order'] as $displayOrder => $imgId) {
+                if (is_numeric($imgId) && !in_array($imgId, $delete_images)) {
+                    execute("UPDATE catalogue_product_images SET display_order = ? WHERE id = ? AND product_id = ?", [(int)$displayOrder + 1, (int)$imgId, $id]);
+                }
+            }
         }
 
         // 6. Handle Variants
+        // If variant_type changed away from previous variant type (e.g. size -> color, color -> size, variant -> none):
+        if ($oldVariantType !== $variant_type && $oldVariantType !== 'none') {
+            // Delete all previous variants from old type and clean their uploaded images
+            $oldVariants = fetchAll("SELECT id, image_url FROM catalogue_product_variants WHERE product_id = ?", [$id]);
+            foreach ($oldVariants as $ov) {
+                if (!empty($ov['image_url'])) {
+                    deleteUploadedFile('catalogue/products/' . $ov['image_url']);
+                }
+            }
+            execute("DELETE FROM catalogue_product_variants WHERE product_id = ?", [$id]);
+        }
+
         if ($variant_type !== 'none') {
-            // 6a. Delete Variants
-            if (!empty($delete_variants)) {
+            // 6a. Delete Variants explicitly marked for deletion (only applicable if variant_type didn't change)
+            if ($oldVariantType === $variant_type && !empty($delete_variants)) {
                 foreach ($delete_variants as $vid) {
                     // Check ownership
                     $v = fetchOne("SELECT image_url FROM catalogue_product_variants WHERE id = ? AND product_id = ?", [$vid, $id]);
@@ -197,12 +286,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             // 6b. Insert/Update Variants
             $submittedVariants = $_POST['variants'][$variant_type] ?? [];
-            
-            // If ALL variants are deleted and none added, that's invalid if we enforce checks.
-            // But let's just process.
+            if (empty($submittedVariants)) {
+                throw new Exception("Please add at least one variant.");
+            }
             
             foreach ($submittedVariants as $index => $variantData) {
-                $vid = $variantData['id'] ?? null;
+                // If variant_type changed, all old variants were wiped, so everything is an INSERT
+                $vid = ($oldVariantType === $variant_type && !empty($variantData['id'])) ? (int)$variantData['id'] : null;
                 
                 $attrValue = ''; 
                 $colorId = null;
@@ -245,10 +335,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                      }
                 }
 
+                $vSizeDimensions = null;
+                if ($variant_type === 'color' && !empty($variantData['sizes']) && is_array($variantData['sizes'])) {
+                    $cleanedSizes = [];
+                    foreach ($variantData['sizes'] as $sz) {
+                        $sDim = trim(sanitize($sz['dimension'] ?? ''));
+                        if ($sDim !== '') {
+                            $cleanedSizes[] = [
+                                'dimension' => $sDim,
+                                'price' => (isset($sz['price']) && $sz['price'] !== '') ? (float)$sz['price'] : null,
+                                'price_zone2' => (isset($sz['price_zone2']) && $sz['price_zone2'] !== '') ? (float)$sz['price_zone2'] : null,
+                            ];
+                        }
+                    }
+                    if (!empty($cleanedSizes)) {
+                        $vSizeDimensions = json_encode(array_values($cleanedSizes));
+                    }
+                }
+
                 if ($vid) {
                     // UPDATE
-                    $sqlV = "UPDATE catalogue_product_variants SET name=?, code=?, price=?, price_zone2=?, attribute_value=?, color_id=?, display_order=?";
-                    $paramsV = [$vName, $vCode, $vPrice, $vPriceZ2, $attrValue, $colorId, $index];
+                    $sqlV = "UPDATE catalogue_product_variants SET name=?, code=?, price=?, price_zone2=?, attribute_value=?, color_id=?, size_dimensions=?, display_order=?";
+                    $paramsV = [$vName, $vCode, $vPrice, $vPriceZ2, $attrValue, $colorId, $vSizeDimensions, $index];
                     
                     if ($vImageUrl) {
                         $sqlV .= ", image_url=?";
@@ -271,10 +379,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 } else {
                     // INSERT
-                    $vSql = "INSERT INTO catalogue_product_variants (product_id, name, code, price, price_zone2, attribute_value, color_id, image_url, display_order, is_active) 
-                             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)";
+                    $vSql = "INSERT INTO catalogue_product_variants (product_id, name, code, price, price_zone2, attribute_value, color_id, image_url, size_dimensions, display_order, is_active) 
+                             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)";
                     $vStmt = $pdo->prepare($vSql);
-                    $vStmt->execute([$id, $vName, $vCode, $vPrice, $vPriceZ2, $attrValue, $colorId, $vImageUrl, $index]);
+                    $vStmt->execute([$id, $vName, $vCode, $vPrice, $vPriceZ2, $attrValue, $colorId, $vImageUrl, $vSizeDimensions, $index]);
                 }
             }
         }

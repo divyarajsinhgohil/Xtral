@@ -7,11 +7,15 @@
  *   ?new_arrivals=1    only new-arrival products
  */
 require_once __DIR__ . '/config.php';
+require_once dirname(__DIR__, 2) . '/includes/catalogue_product_hierarchy.php';
 
 requireMethod('GET');
 
 try {
-    $where = "p.is_active = 1 AND s.is_active = 1 AND c.is_active = 1";
+    $productHierarchy = catalogueProductHierarchySql(getDBConnection());
+    $productCategorySql = $productHierarchy['category'];
+    $productSubCategorySql = $productHierarchy['sub_category'];
+    $where = "p.is_active = 1 AND (s.is_active = 1 OR s.id IS NULL) AND c.is_active = 1";
     $params = [];
 
     if (!empty($_GET['category_id']) && ctype_digit($_GET['category_id'])) {
@@ -21,24 +25,35 @@ try {
     if (!empty($_GET['new_arrivals'])) {
         $where .= " AND p.is_new_arrival = 1";
     }
+    if (!empty($_GET['search']) || !empty($_GET['q'])) {
+        $searchTerm = trim($_GET['search'] ?? $_GET['q']);
+        $cleanSearch = preg_replace('/[^a-zA-Z0-9]/', '', $searchTerm);
+        $cleanLike = '%' . ($cleanSearch !== '' ? $cleanSearch : $searchTerm) . '%';
+        $like = "%{$searchTerm}%";
+        $where .= " AND (p.name LIKE ? OR p.code LIKE ? OR REPLACE(p.code, '-', '') LIKE ? OR EXISTS (
+            SELECT 1 FROM catalogue_product_variants v 
+            WHERE v.product_id = p.id AND (v.code LIKE ? OR REPLACE(v.code, '-', '') LIKE ? OR v.attribute_value LIKE ?)
+        ))";
+        $params[] = $like;
+        $params[] = $like;
+        $params[] = $cleanLike;
+        $params[] = $like;
+        $params[] = $cleanLike;
+        $params[] = $like;
+    }
 
     $rows = fetchAll("
         SELECT
-            p.id, p.name, p.code, p.price, p.dimensions,
+            p.id, p.name, p.code, p.price, p.price_zone2, p.price_label_1, p.price_label_2, p.dimensions,
             p.specifications, p.is_new_arrival,
-            p.variant_type, p.colour_label, p.video_url,
-            s.id AS series_id, s.name AS series_name, s.sub_category_id,
-            c.id AS category_id, c.name AS category_name,
-            (SELECT pi.image_url
-             FROM catalogue_product_images pi
-             WHERE pi.product_id = p.id
-             ORDER BY pi.is_primary DESC, pi.display_order, pi.id
-             LIMIT 1) AS image_url
+            p.variant_type, p.colour_label, p.video_url, p.display_order,
+            p.series_id AS series_id, s.name AS series_name, {$productSubCategorySql} AS sub_category_id,
+            c.id AS category_id, c.name AS category_name
         FROM catalogue_products p
-        JOIN catalogue_series s ON p.series_id = s.id
-        JOIN catalogue_categories c ON s.category_id = c.id
+        LEFT JOIN catalogue_series s ON p.series_id = s.id
+        JOIN catalogue_categories c ON {$productCategorySql} = c.id
         WHERE $where
-        ORDER BY p.display_order, p.id
+        ORDER BY p.id ASC
     ", $params);
 
     // Load variants of all returned products in one query
@@ -50,8 +65,7 @@ try {
         
         // 1. Fetch variants
         $variantRows = fetchAll("
-            SELECT v.product_id, v.code, v.price, v.attribute_value, v.image_url,
-                   col.hex_code
+            SELECT v.*, col.hex_code, col.texture_image
             FROM catalogue_product_variants v
             LEFT JOIN catalogue_colors col ON v.color_id = col.id
             WHERE v.is_active = 1 AND v.product_id IN ($placeholders)
@@ -59,12 +73,28 @@ try {
         ", $productIds);
  
         foreach ($variantRows as $v) {
+            $rawSizes = !empty($v['size_dimensions']) ? json_decode($v['size_dimensions'], true) : [];
+            $sizes = [];
+            if (is_array($rawSizes)) {
+                foreach ($rawSizes as $rs) {
+                    if (!empty($rs['dimension'])) {
+                        $sizes[] = [
+                            'dimension'   => $rs['dimension'],
+                            'price'       => (isset($rs['price']) && $rs['price'] !== '' && $rs['price'] !== null) ? (int)$rs['price'] : null,
+                            'price_zone2' => (isset($rs['price_zone2']) && $rs['price_zone2'] !== '' && $rs['price_zone2'] !== null) ? (int)$rs['price_zone2'] : null,
+                        ];
+                    }
+                }
+            }
             $variantsByProduct[$v['product_id']][] = [
-                'name' => $v['attribute_value'],
-                'code' => $v['code'],
-                'price' => (int) $v['price'],
-                'color_hex' => $v['hex_code'] ?: null,
-                'image' => uploadUrl($v['image_url'], 'catalogue/products'),
+                'name'          => $v['attribute_value'],
+                'code'          => $v['code'],
+                'price'         => (int) $v['price'],
+                'price_zone2'   => !empty($v['price_zone2']) ? (int) $v['price_zone2'] : null,
+                'color_hex'     => $v['hex_code'] ?: null,
+                'texture_image' => uploadUrl($v['texture_image'], 'catalogue/colors'),
+                'image'         => uploadUrl($v['image_url'], 'catalogue/products'),
+                'sizes'         => $sizes,
             ];
         }
 
@@ -99,11 +129,8 @@ try {
     }
  
     $products = array_map(function ($row) use ($variantsByProduct, $imagesByProduct, $featuresByProduct) {
-        $primaryImg = uploadUrl($row['image_url'], 'catalogue/products');
         $allImages = $imagesByProduct[$row['id']] ?? [];
-        if (empty($allImages) && $primaryImg) {
-            $allImages[] = $primaryImg;
-        }
+        $primaryImg = !empty($allImages) ? $allImages[0] : null;
         $variants = $variantsByProduct[$row['id']] ?? [];
         $code = $row['code'] ?: null;
         if (!$code && !empty($variants)) {
@@ -114,14 +141,18 @@ try {
             'name' => $row['name'],
             'code' => $code,
             'price' => (int) $row['price'],
+            'price_zone2' => !empty($row['price_zone2']) ? (int) $row['price_zone2'] : null,
+            'price_label_1' => !empty($row['price_label_1']) ? $row['price_label_1'] : (getSetting('prod_price_label_1_' . $row['id']) ?: null),
+            'price_label_2' => !empty($row['price_label_2']) ? $row['price_label_2'] : (getSetting('prod_price_label_2_' . $row['id']) ?: null),
             'dimensions' => $row['dimensions'] ?: null,
             'specifications' => $row['specifications'] ?: null,
             'is_new_arrival' => (bool) $row['is_new_arrival'],
             'series' => $row['series_name'],
-            'series_id' => (int) $row['series_id'],
+            'series_id' => $row['series_id'] === null ? null : (int) $row['series_id'],
             'sub_category_id' => $row['sub_category_id'] !== null ? (int) $row['sub_category_id'] : null,
             'category_id' => (int) $row['category_id'],
             'category' => $row['category_name'],
+            'display_order' => (int) $row['display_order'],
             'image' => $primaryImg,
             'images' => $allImages,
             'variant_type' => $row['variant_type'],
